@@ -38,20 +38,6 @@ while ( count( $schedules ) < ILLE_PG_Settings::MAX_SCHEDULES ) {
         </a>
     </div>
 
-    <!-- Active Endpoint Status -->
-    <div class="ille-pg-card ille-pg-endpoint-status">
-        <div class="ille-pg-card__header">
-            <h2>Active Endpoint</h2>
-            <span class="ille-pg-endpoint-indicator" id="ille-endpoint-status-dot"></span>
-        </div>
-        <div class="ille-pg-copy-row">
-            <code class="ille-pg-code" id="ille-active-endpoint-url"><?php echo esc_html( $endpoint_url ); ?></code>
-            <button type="button" class="ille-pg-btn ille-pg-btn--sm ille-pg-copy-btn" data-copy="ille-active-endpoint-url">Copy</button>
-            <button type="button" id="ille-test-endpoint" class="ille-pg-btn ille-pg-btn--sm">Test</button>
-        </div>
-        <p class="ille-pg-hint" id="ille-endpoint-test-result"></p>
-    </div>
-
     <!-- Tab Nav -->
     <div class="ille-pg-tabs" role="tablist">
         <button class="ille-pg-tab active" data-tab="endpoint" role="tab">Endpoint</button>
@@ -67,6 +53,21 @@ while ( count( $schedules ) < ILLE_PG_Settings::MAX_SCHEDULES ) {
              TAB: ENDPOINT
         ================================================================ -->
         <div class="ille-pg-tab-panel active" data-panel="endpoint">
+
+            <!-- Active Endpoint Status -->
+            <div class="ille-pg-card ille-pg-endpoint-status">
+                <div class="ille-pg-card__header">
+                    <h2>Active Endpoint</h2>
+                    <span class="ille-pg-endpoint-indicator" id="ille-endpoint-status-dot"></span>
+                </div>
+                <div class="ille-pg-copy-row">
+                    <code class="ille-pg-code" id="ille-active-endpoint-url"><?php echo esc_html( $endpoint_url ); ?></code>
+                    <button type="button" class="ille-pg-btn ille-pg-btn--sm ille-pg-copy-btn" data-copy="ille-active-endpoint-url">Copy</button>
+                    <button type="button" id="ille-test-endpoint" class="ille-pg-btn ille-pg-btn--sm">Test</button>
+                </div>
+                <p class="ille-pg-hint" id="ille-endpoint-test-result"></p>
+            </div>
+
             <div class="ille-pg-card">
                 <div class="ille-pg-card__header"><h2>Endpoint Configuration</h2></div>
 
