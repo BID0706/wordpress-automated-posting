@@ -35,8 +35,6 @@
     color: var(--ille-text);
     max-width: 860px;
     margin: 20px 0;
-    background: var(--ille-bg);
-    min-height: 100vh;
 }
 
 /* ============================================================================

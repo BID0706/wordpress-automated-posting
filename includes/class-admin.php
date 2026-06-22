@@ -149,10 +149,18 @@ class ILLE_PG_Admin {
             ILLE_PG_Settings::KEY_IMAGE_PROMPT,
         ];
 
+        $endpoint_changed = isset( $fields[ ILLE_PG_Settings::KEY_CUSTOM_ENDPOINT ] )
+            && $fields[ ILLE_PG_Settings::KEY_CUSTOM_ENDPOINT ] !== get_option( ILLE_PG_Settings::KEY_CUSTOM_ENDPOINT, '' );
+
         foreach ( $string_keys as $key ) {
             if ( isset( $fields[ $key ] ) ) {
                 update_option( $key, sanitize_textarea_field( $fields[ $key ] ) );
             }
+        }
+
+        // Flush rewrite rules so the new REST route slug takes effect immediately
+        if ( $endpoint_changed ) {
+            flush_rewrite_rules();
         }
 
         // Allowed roles (array)
