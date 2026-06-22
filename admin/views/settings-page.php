@@ -442,6 +442,7 @@ while ( count( $schedules ) < ILLE_PG_Settings::MAX_SCHEDULES ) {
                 ILLE_PG_Logger::EVENT_LOG_TRUNCATED    => [ 'Log Truncated',     'muted'  ],
                 ILLE_PG_Logger::EVENT_LOG_DELETED      => [ 'Log Deleted',       'danger' ],
                 ILLE_PG_Logger::EVENT_ENDPOINT_TESTED  => [ 'Endpoint Tested',   'muted'  ],
+                ILLE_PG_Logger::EVENT_ENDPOINT_ERROR   => [ 'Endpoint Error',    'danger' ],
             ];
 
             $trigger_labels = [
@@ -525,6 +526,20 @@ while ( count( $schedules ) < ILLE_PG_Settings::MAX_SCHEDULES ) {
                                             esc_html( ucfirst( $data['action'] ?? '' ) ),
                                             esc_html( $data['target_username'] ?? '' )
                                         );
+                                    } elseif ( $ev === ILLE_PG_Logger::EVENT_ENDPOINT_ERROR ) {
+                                        $reason_map = [
+                                            'missing_api_key'     => 'Missing API key',
+                                            'invalid_api_key'     => 'Invalid API key',
+                                            'role_not_permitted'  => 'Role not permitted',
+                                            'post_creation_failed'=> 'Post creation failed',
+                                        ];
+                                        $reason  = $reason_map[ $data['reason'] ?? '' ] ?? ucwords( str_replace( '_', ' ', $data['reason'] ?? '' ) );
+                                        $extra   = '';
+                                        if ( ! empty( $data['key_preview'] ) ) $extra = ' · key: <code>' . esc_html( $data['key_preview'] ) . '</code>';
+                                        if ( ! empty( $data['username'] )    ) $extra = ' · user: <strong>' . esc_html( $data['username'] ) . '</strong>';
+                                        if ( ! empty( $data['error'] )       ) $extra = ' · ' . esc_html( $data['error'] );
+                                        if ( ! empty( $data['ip'] )          ) $extra .= ' · IP: <code>' . esc_html( $data['ip'] ) . '</code>';
+                                        $details = $reason . $extra;
                                     } else {
                                         $details = esc_html( wp_json_encode( $data ) );
                                     }

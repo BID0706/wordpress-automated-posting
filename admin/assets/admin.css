@@ -1018,3 +1018,10 @@
     border-color: var(--ille-danger);
     color: #991b1b;
 }
+
+/* Uniform icon color for log header — override warning/danger default tint */
+.ille-pg-log-header-actions .ille-pg-icon-btn--warning,
+.ille-pg-log-header-actions .ille-pg-icon-btn--danger {
+    color: var(--ille-text-muted);
+    border-color: var(--ille-border);
+}

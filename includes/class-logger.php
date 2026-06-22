@@ -10,6 +10,7 @@ class ILLE_PG_Logger {
     const EVENT_LOG_TRUNCATED    = 'log_truncated';
     const EVENT_LOG_DELETED      = 'log_deleted';
     const EVENT_ENDPOINT_TESTED  = 'endpoint_tested';
+    const EVENT_ENDPOINT_ERROR   = 'endpoint_error';
 
     const TRIGGER_MANUAL   = 'manual';
     const TRIGGER_ENDPOINT = 'endpoint';
