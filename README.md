@@ -51,9 +51,9 @@ Built for [ille.com.ng](https://ille.com.ng).
 
 ## Installation
 
-1. Download or clone this repository
-2. Upload the `ille-post-generator-v2` folder to `/wp-content/plugins/`
-3. Activate the plugin in **WP Admin → Plugins**
+1. Download the latest release from the [Releases page](https://github.com/BID0706/wordpress-automated-posting/releases)
+2. In your WordPress admin, navigate to **Plugins → Add Plugins → Upload Plugin**
+3. Upload the ZIP file and click **Activate**
 4. Go to **Post Generator → Settings** and configure:
    - Gemini API key *(Phase 2)*
    - Endpoint secret key (auto-generated on activation)
