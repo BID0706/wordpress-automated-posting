@@ -71,7 +71,10 @@ class ILLE_PG_REST_API {
             ? get_current_user_id()
             : (int) $request->get_param( '_ille_pg_user_id' );
 
-        $args = [ 'author_id' => $author_id ];
+        $args = [
+            'author_id' => $author_id,
+            'trigger'   => ILLE_PG_Logger::TRIGGER_ENDPOINT,
+        ];
 
         if ( in_array( 'topic', $allowed_params, true ) ) {
             $args['topic'] = sanitize_text_field( $request->get_param( 'topic' ) ?: '' );

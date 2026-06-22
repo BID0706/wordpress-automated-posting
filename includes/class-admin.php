@@ -10,6 +10,9 @@ class ILLE_PG_Admin {
         add_action( 'wp_ajax_ille_pg_save_settings',  [ $this, 'ajax_save_settings' ] );
         add_action( 'wp_ajax_ille_pg_regenerate_key', [ $this, 'ajax_regenerate_key' ] );
         add_action( 'wp_ajax_ille_pg_test_endpoint',  [ $this, 'ajax_test_endpoint' ] );
+        add_action( 'wp_ajax_ille_pg_log_export',     [ $this, 'ajax_log_export' ] );
+        add_action( 'wp_ajax_ille_pg_log_truncate',   [ $this, 'ajax_log_truncate' ] );
+        add_action( 'wp_ajax_ille_pg_log_delete',     [ $this, 'ajax_log_delete' ] );
         add_action( 'admin_init', [ $this, 'maybe_flush_rewrite_rules' ] );
     }
 
@@ -157,7 +160,10 @@ class ILLE_PG_Admin {
 
         foreach ( $string_keys as $key ) {
             if ( isset( $fields[ $key ] ) ) {
-                update_option( $key, sanitize_textarea_field( $fields[ $key ] ) );
+                $prev = get_option( $key, '' );
+                $new  = sanitize_textarea_field( $fields[ $key ] );
+                update_option( $key, $new );
+                ILLE_PG_Logger::log_settings_change( $key, $prev, $new );
             }
         }
 
@@ -169,14 +175,18 @@ class ILLE_PG_Admin {
 
         // Allowed roles (array)
         if ( isset( $fields[ ILLE_PG_Settings::KEY_ALLOWED_ROLES ] ) ) {
-            $roles = array_map( 'sanitize_key', (array) $fields[ ILLE_PG_Settings::KEY_ALLOWED_ROLES ] );
+            $prev_roles = ILLE_PG_Settings::get_allowed_roles();
+            $roles      = array_map( 'sanitize_key', (array) $fields[ ILLE_PG_Settings::KEY_ALLOWED_ROLES ] );
             update_option( ILLE_PG_Settings::KEY_ALLOWED_ROLES, $roles );
+            ILLE_PG_Logger::log_settings_change( ILLE_PG_Settings::KEY_ALLOWED_ROLES, implode( ', ', $prev_roles ), implode( ', ', $roles ) );
         }
 
         // Allowed params (array)
         if ( isset( $fields[ ILLE_PG_Settings::KEY_ALLOWED_PARAMS ] ) ) {
-            $params = array_map( 'sanitize_key', (array) $fields[ ILLE_PG_Settings::KEY_ALLOWED_PARAMS ] );
+            $prev_params = ILLE_PG_Settings::get_allowed_params();
+            $params      = array_map( 'sanitize_key', (array) $fields[ ILLE_PG_Settings::KEY_ALLOWED_PARAMS ] );
             update_option( ILLE_PG_Settings::KEY_ALLOWED_PARAMS, $params );
+            ILLE_PG_Logger::log_settings_change( ILLE_PG_Settings::KEY_ALLOWED_PARAMS, implode( ', ', $prev_params ), implode( ', ', $params ) );
         }
 
         // Schedules
@@ -221,12 +231,63 @@ class ILLE_PG_Admin {
             wp_send_json_error( [ 'message' => 'Invalid user.' ], 400 );
         }
 
+        $had_key = ! empty( ILLE_PG_Settings::get_user_api_key( $user_id ) );
         $new_key = ILLE_PG_Settings::generate_user_api_key( $user_id );
+
+        ILLE_PG_Logger::log( ILLE_PG_Logger::EVENT_API_KEY_ACTION, [
+            'action'          => $had_key ? 'regenerated' : 'generated',
+            'target_user_id'  => $user_id,
+            'target_username' => get_userdata( $user_id )->display_name ?? '',
+        ] );
 
         wp_send_json_success( [
             'api_key' => $new_key,
             'user_id' => $user_id,
         ] );
+    }
+
+    // -------------------------------------------------------------------------
+    // AJAX: Log management
+    // -------------------------------------------------------------------------
+
+    private function require_admin_log(): void {
+        check_ajax_referer( 'ille_pg_nonce', 'nonce' );
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_send_json_error( [ 'message' => 'Permission denied.' ], 403 );
+        }
+    }
+
+    public function ajax_log_export() {
+        $this->require_admin_log();
+
+        $csv      = ILLE_PG_Logger::get_csv();
+        $filename = 'ille-pg-audit-' . current_time( 'Y-m-d' ) . '.csv';
+
+        ILLE_PG_Logger::log( ILLE_PG_Logger::EVENT_LOG_EXPORTED, [ 'filename' => $filename ] );
+
+        wp_send_json_success( [
+            'csv'      => base64_encode( $csv ),
+            'filename' => $filename,
+        ] );
+    }
+
+    public function ajax_log_truncate() {
+        $this->require_admin_log();
+
+        $stats = ILLE_PG_Logger::get_stats();
+        ILLE_PG_Logger::log( ILLE_PG_Logger::EVENT_LOG_TRUNCATED, [ 'entries_cleared' => $stats['count'] ] );
+        ILLE_PG_Logger::truncate();
+
+        wp_send_json_success( [ 'message' => 'Log truncated.' ] );
+    }
+
+    public function ajax_log_delete() {
+        $this->require_admin_log();
+
+        ILLE_PG_Logger::log( ILLE_PG_Logger::EVENT_LOG_DELETED, [] );
+        ILLE_PG_Logger::delete();
+
+        wp_send_json_success( [ 'message' => 'Log deleted.' ] );
     }
 
     // -------------------------------------------------------------------------
@@ -247,6 +308,11 @@ class ILLE_PG_Admin {
         $routes = $server->get_routes( ILLE_PG_Settings::get_rest_namespace() );
         $route  = '/' . ILLE_PG_Settings::get_rest_namespace() . '/' . ILLE_PG_Settings::get_rest_route();
         $active = isset( $routes[ $route ] );
+
+        ILLE_PG_Logger::log( ILLE_PG_Logger::EVENT_ENDPOINT_TESTED, [
+            'route'  => $route,
+            'active' => $active,
+        ] );
 
         wp_send_json_success( [
             'active'       => $active,

@@ -397,6 +397,84 @@
     });
 
     // =========================================================================
+    // Activity log actions
+    // =========================================================================
+
+    function logStatus( msg, isError ) {
+        const $el = $('#ille-log-action-status');
+        $el.text( msg )
+           .removeClass('ille-pg-alert--error')
+           .removeAttr('hidden');
+        if ( isError ) $el.addClass('ille-pg-alert--error');
+    }
+
+    $('#ille-log-export').on('click', function () {
+        const $btn = $(this).prop('disabled', true).text('Exporting…');
+        $.ajax({
+            url: ILLE_PG.ajax_url, method: 'POST',
+            data: { action: 'ille_pg_log_export', nonce: ILLE_PG.nonce },
+            success: function (res) {
+                if (!res.success) { logStatus(res.data.message, true); return; }
+                const bytes    = atob(res.data.csv);
+                const arr      = new Uint8Array(bytes.length);
+                for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
+                const blob     = new Blob([arr], { type: 'text/csv' });
+                const url      = URL.createObjectURL(blob);
+                const a        = document.createElement('a');
+                a.href = url; a.download = res.data.filename;
+                document.body.appendChild(a); a.click();
+                document.body.removeChild(a); URL.revokeObjectURL(url);
+            },
+            error: function () { logStatus('Export failed.', true); },
+            complete: function () { $btn.prop('disabled', false).text('Export CSV'); }
+        });
+    });
+
+    $('#ille-log-truncate').on('click', function () {
+        const $btn = $(this);
+        if (!$btn.data('confirmed')) {
+            $btn.data('confirmed', true).text('Confirm truncate?');
+            setTimeout(() => $btn.data('confirmed', false).text('Truncate'), 3000);
+            return;
+        }
+        $btn.prop('disabled', true).text('Truncating…');
+        $.ajax({
+            url: ILLE_PG.ajax_url, method: 'POST',
+            data: { action: 'ille_pg_log_truncate', nonce: ILLE_PG.nonce },
+            success: function (res) {
+                if (res.success) {
+                    logStatus('Log truncated. Reload to refresh the table.');
+                } else {
+                    logStatus(res.data.message, true);
+                }
+            },
+            complete: function () { $btn.prop('disabled', false).text('Truncate'); }
+        });
+    });
+
+    $('#ille-log-delete').on('click', function () {
+        const $btn = $(this);
+        if (!$btn.data('confirmed')) {
+            $btn.data('confirmed', true).text('Confirm delete?');
+            setTimeout(() => $btn.data('confirmed', false).text('Delete Log'), 3000);
+            return;
+        }
+        $btn.prop('disabled', true).text('Deleting…');
+        $.ajax({
+            url: ILLE_PG.ajax_url, method: 'POST',
+            data: { action: 'ille_pg_log_delete', nonce: ILLE_PG.nonce },
+            success: function (res) {
+                if (res.success) {
+                    logStatus('Log file deleted. Reload to refresh the table.');
+                } else {
+                    logStatus(res.data.message, true);
+                }
+            },
+            complete: function () { $btn.prop('disabled', false).text('Delete Log'); }
+        });
+    });
+
+    // =========================================================================
     // Reset prompt buttons
     // =========================================================================
 

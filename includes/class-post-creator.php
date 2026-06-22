@@ -92,6 +92,20 @@ class ILLE_PG_Post_Creator {
         update_post_meta( $post_id, '_yoast_wpseo_metadesc', sanitize_text_field( $content_data['excerpt'] ) );
         update_post_meta( $post_id, '_yoast_wpseo_title',    sanitize_text_field( $content_data['title'] ) . ' %%sep%% %%sitename%%' );
 
+        ILLE_PG_Logger::log(
+            ILLE_PG_Logger::EVENT_POST_CREATED,
+            [
+                'post_id'  => $post_id,
+                'title'    => $content_data['title'],
+                'status'   => $post_status,
+                'category' => $content_data['category'],
+                'keyword'  => $keyword,
+                'post_url' => get_permalink( $post_id ),
+            ],
+            $args['trigger'] ?? ILLE_PG_Logger::TRIGGER_MANUAL,
+            $args['author_id']
+        );
+
         return $post_id;
     }
 

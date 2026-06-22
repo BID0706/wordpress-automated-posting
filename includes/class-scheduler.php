@@ -31,6 +31,7 @@ class ILLE_PG_Scheduler {
             'topic'          => $schedule['topic']       ?? '',
             'post_status'    => $schedule['post_status'] ?? 'publish',
             'featured_image' => true,
+            'trigger'        => ILLE_PG_Logger::TRIGGER_SCHEDULE,
         ] );
 
         self::reschedule( $index, $schedule );

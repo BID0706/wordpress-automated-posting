@@ -786,3 +786,155 @@
 }
 
 .ille-pg-save-status.error { color: var(--ille-danger); }
+
+/* ============================================================================
+   Activity Log
+   ============================================================================ */
+
+.ille-pg-log-stats {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+    padding: 14px 18px;
+    background: var(--ille-bg);
+    border: 1px solid var(--ille-border);
+    border-radius: 8px;
+}
+
+.ille-pg-log-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.ille-pg-log-stat__label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: var(--ille-text-muted);
+    font-weight: 600;
+}
+
+.ille-pg-log-stat__value {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--ille-text);
+}
+
+.ille-pg-log-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+    align-items: center;
+}
+
+.ille-pg-log-table-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--ille-border);
+    border-radius: 10px;
+}
+
+.ille-pg-log-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.ille-pg-log-table thead th {
+    background: var(--ille-bg);
+    padding: 10px 14px;
+    text-align: left;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    color: var(--ille-text-muted);
+    border-bottom: 1px solid var(--ille-border);
+    white-space: nowrap;
+}
+
+.ille-pg-log-table tbody tr:nth-child(even) {
+    background: var(--ille-bg);
+}
+
+.ille-pg-log-table tbody tr:hover {
+    background: var(--ille-accent-light);
+}
+
+.ille-pg-log-table td {
+    padding: 9px 14px;
+    border-bottom: 1px solid var(--ille-border);
+    vertical-align: top;
+}
+
+.ille-pg-log-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.ille-pg-log-ts {
+    white-space: nowrap;
+    font-family: monospace;
+    font-size: 12px;
+    color: var(--ille-text-muted);
+}
+
+.ille-pg-log-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .02em;
+    white-space: nowrap;
+}
+
+.ille-pg-log-badge--green  { background: var(--ille-success-bg); color: #065f46; }
+.ille-pg-log-badge--orange { background: var(--ille-warning-bg); color: #92400e; }
+.ille-pg-log-badge--blue   { background: var(--ille-accent-light); color: var(--ille-accent-dark); }
+.ille-pg-log-badge--muted  { background: #f1f5f9; color: var(--ille-text-muted); }
+.ille-pg-log-badge--danger { background: var(--ille-danger-bg); color: #991b1b; }
+
+.ille-pg-log-details {
+    font-size: 12px;
+    color: var(--ille-text-muted);
+    line-height: 1.5;
+}
+
+.ille-pg-log-details code {
+    background: #f1f5f9;
+    border-radius: 3px;
+    padding: 1px 4px;
+    font-size: 11px;
+    color: var(--ille-text);
+}
+
+.ille-pg-log-prev {
+    text-decoration: line-through;
+    color: var(--ille-danger);
+    font-size: 11px;
+}
+
+.ille-pg-log-new {
+    color: var(--ille-success);
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.ille-pg-log-empty {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--ille-text-muted);
+    font-size: 13px;
+}
+
+#ille-log-action-status {
+    font-size: 13px;
+    color: var(--ille-success);
+    font-weight: 500;
+}
+
+#ille-log-action-status.ille-pg-alert--error {
+    color: var(--ille-danger);
+}

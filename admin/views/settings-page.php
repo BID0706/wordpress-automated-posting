@@ -44,6 +44,9 @@ while ( count( $schedules ) < ILLE_PG_Settings::MAX_SCHEDULES ) {
         <button class="ille-pg-tab" data-tab="ai"       role="tab">AI Models</button>
         <button class="ille-pg-tab" data-tab="prompts"  role="tab">Prompts</button>
         <button class="ille-pg-tab" data-tab="schedule" role="tab">Schedules</button>
+        <?php if ( current_user_can( 'manage_options' ) ) : ?>
+        <button class="ille-pg-tab" data-tab="log"      role="tab">Activity Log</button>
+        <?php endif; ?>
     </div>
 
     <form id="ille-pg-settings-form">
@@ -423,6 +426,125 @@ while ( count( $schedules ) < ILLE_PG_Settings::MAX_SCHEDULES ) {
                 </div>
             </div>
         </div>
+
+        <!-- ================================================================
+             TAB: ACTIVITY LOG (admin only)
+        ================================================================ -->
+        <?php if ( current_user_can( 'manage_options' ) ) :
+            $log_stats   = ILLE_PG_Logger::get_stats();
+            $log_entries = ILLE_PG_Logger::get_entries( 200 );
+
+            $event_labels = [
+                ILLE_PG_Logger::EVENT_POST_CREATED     => [ 'Post Created',      'green'  ],
+                ILLE_PG_Logger::EVENT_SETTINGS_CHANGED => [ 'Settings Changed',  'orange' ],
+                ILLE_PG_Logger::EVENT_API_KEY_ACTION   => [ 'API Key Action',    'blue'   ],
+                ILLE_PG_Logger::EVENT_LOG_EXPORTED     => [ 'Log Exported',      'muted'  ],
+                ILLE_PG_Logger::EVENT_LOG_TRUNCATED    => [ 'Log Truncated',     'muted'  ],
+                ILLE_PG_Logger::EVENT_LOG_DELETED      => [ 'Log Deleted',       'danger' ],
+                ILLE_PG_Logger::EVENT_ENDPOINT_TESTED  => [ 'Endpoint Tested',   'muted'  ],
+            ];
+
+            $trigger_labels = [
+                ILLE_PG_Logger::TRIGGER_MANUAL   => 'Manual',
+                ILLE_PG_Logger::TRIGGER_ENDPOINT => 'Endpoint',
+                ILLE_PG_Logger::TRIGGER_SCHEDULE => 'Schedule',
+            ];
+        ?>
+        <div class="ille-pg-tab-panel" data-panel="log">
+            <div class="ille-pg-card">
+                <div class="ille-pg-card__header">
+                    <h2>Activity Log</h2>
+                    <div style="display:flex;gap:8px;align-items:center;margin-left:auto">
+                        <button type="button" id="ille-log-export" class="ille-pg-btn ille-pg-btn--sm">Export CSV</button>
+                        <button type="button" id="ille-log-truncate" class="ille-pg-btn ille-pg-btn--sm ille-pg-btn--warning">Truncate</button>
+                        <button type="button" id="ille-log-delete" class="ille-pg-btn ille-pg-btn--sm ille-pg-btn--danger">Delete Log</button>
+                    </div>
+                </div>
+
+                <!-- Stats bar -->
+                <div class="ille-pg-log-stats">
+                    <div class="ille-pg-log-stat">
+                        <span class="ille-pg-log-stat__value"><?php echo esc_html( number_format( $log_stats['count'] ) ); ?></span>
+                        <span class="ille-pg-log-stat__label">Total entries</span>
+                    </div>
+                    <div class="ille-pg-log-stat">
+                        <span class="ille-pg-log-stat__value"><?php echo esc_html( size_format( $log_stats['size'] ) ); ?></span>
+                        <span class="ille-pg-log-stat__label">File size</span>
+                    </div>
+                    <div class="ille-pg-log-stat">
+                        <span class="ille-pg-log-stat__value"><?php echo $log_stats['oldest'] ? esc_html( date( 'M j, Y', strtotime( $log_stats['oldest'] ) ) ) : '—'; ?></span>
+                        <span class="ille-pg-log-stat__label">Oldest entry</span>
+                    </div>
+                    <div class="ille-pg-log-stat">
+                        <span class="ille-pg-log-stat__value"><?php echo $log_stats['newest'] ? esc_html( date( 'M j, Y', strtotime( $log_stats['newest'] ) ) ) : '—'; ?></span>
+                        <span class="ille-pg-log-stat__label">Latest entry</span>
+                    </div>
+                </div>
+
+                <p class="ille-pg-hint">Showing last <?php echo count( $log_entries ); ?> of <?php echo esc_html( $log_stats['count'] ); ?> entries. Export CSV for full history.</p>
+
+                <?php if ( empty( $log_entries ) ) : ?>
+                    <p class="ille-pg-hint" style="text-align:center;padding:32px 0">No activity recorded yet.</p>
+                <?php else : ?>
+                    <div class="ille-pg-log-table-wrap">
+                        <table class="ille-pg-log-table">
+                            <thead>
+                                <tr>
+                                    <th>Timestamp</th>
+                                    <th>Event</th>
+                                    <th>Trigger</th>
+                                    <th>User</th>
+                                    <th>Details</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ( $log_entries as $entry ) :
+                                    $ev      = $entry['event'] ?? '';
+                                    $label   = $event_labels[ $ev ][0] ?? ucwords( str_replace( '_', ' ', $ev ) );
+                                    $colour  = $event_labels[ $ev ][1] ?? 'muted';
+                                    $trigger = $trigger_labels[ $entry['trigger'] ?? '' ] ?? ( $entry['trigger'] ?? '' );
+                                    $data    = $entry['data'] ?? [];
+
+                                    // Format details based on event type
+                                    $details = '';
+                                    if ( $ev === ILLE_PG_Logger::EVENT_POST_CREATED ) {
+                                        $details = sprintf( '<a href="%s" target="_blank">%s</a> · %s',
+                                            esc_url( $data['post_url'] ?? '#' ),
+                                            esc_html( $data['title'] ?? '' ),
+                                            esc_html( ucfirst( $data['status'] ?? '' ) )
+                                        );
+                                    } elseif ( $ev === ILLE_PG_Logger::EVENT_SETTINGS_CHANGED ) {
+                                        $details = sprintf( '<code>%s</code> <span class="ille-pg-log-prev">%s</span> → <span class="ille-pg-log-new">%s</span>',
+                                            esc_html( $data['key']  ?? '' ),
+                                            esc_html( $data['prev'] ?? '' ),
+                                            esc_html( $data['new']  ?? '' )
+                                        );
+                                    } elseif ( $ev === ILLE_PG_Logger::EVENT_API_KEY_ACTION ) {
+                                        $details = sprintf( '%s key for <strong>%s</strong>',
+                                            esc_html( ucfirst( $data['action'] ?? '' ) ),
+                                            esc_html( $data['target_username'] ?? '' )
+                                        );
+                                    } else {
+                                        $details = esc_html( wp_json_encode( $data ) );
+                                    }
+                                ?>
+                                    <tr>
+                                        <td class="ille-pg-log-ts"><?php echo esc_html( $entry['ts'] ?? '' ); ?></td>
+                                        <td><span class="ille-pg-log-badge ille-pg-log-badge--<?php echo esc_attr( $colour ); ?>"><?php echo esc_html( $label ); ?></span></td>
+                                        <td class="ille-pg-log-trigger"><?php echo esc_html( $trigger ); ?></td>
+                                        <td class="ille-pg-log-user"><?php echo esc_html( $entry['uname'] ?? '' ); ?></td>
+                                        <td class="ille-pg-log-details"><?php echo wp_kses( $details, [ 'a' => [ 'href' => [], 'target' => [] ], 'code' => [], 'strong' => [], 'span' => [ 'class' => [] ] ] ); ?></td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                <?php endif; ?>
+
+                <p class="ille-pg-alert" id="ille-log-action-status" hidden></p>
+            </div>
+        </div>
+        <?php endif; ?>
 
         <!-- Save Button -->
         <div class="ille-pg-settings-footer">
