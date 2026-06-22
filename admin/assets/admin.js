@@ -207,7 +207,10 @@
             }
         });
 
-        return data;
+        // All field names are prefixed settings[...], so the actual payload
+        // lives under data.settings — return that to avoid double-nesting
+        // when the AJAX call wraps it as { settings: formData }
+        return data.settings || {};
     }
 
     // Translate "settings[foo][bar]" → nested object
