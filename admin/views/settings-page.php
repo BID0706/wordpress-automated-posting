@@ -177,11 +177,15 @@ while ( count( $schedules ) < ILLE_PG_Settings::MAX_SCHEDULES ) {
                 $current_uid   = get_current_user_id();
 
                 // Admins see all allowed users; others see only themselves
-                $allowed_users = $is_admin
-                    ? ILLE_PG_Settings::get_users_with_allowed_roles()
-                    : [ get_userdata( $current_uid ) ];
-
-                $allowed_users = array_filter( $allowed_users ); // remove false on get_userdata failure
+                if ( $is_admin ) {
+                    $all_allowed = ILLE_PG_Settings::get_users_with_allowed_roles();
+                    // Always include the current admin; include others only if they have an active key
+                    $allowed_users = array_filter( $all_allowed, function( $u ) use ( $current_uid ) {
+                        return $u->ID === $current_uid || ! empty( ILLE_PG_Settings::get_user_api_key( $u->ID ) );
+                    } );
+                } else {
+                    $allowed_users = array_filter( [ get_userdata( $current_uid ) ] );
+                }
 
                 if ( $is_admin ) : ?>
                     <p class="ille-pg-hint">Manage API keys for all users with allowed roles. Posts created via each key are attributed to that user. Your own key is highlighted.</p>
