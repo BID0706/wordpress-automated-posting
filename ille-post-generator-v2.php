@@ -3,7 +3,7 @@
  * Plugin Name: ILLE Post Generator V2
  * Plugin URI:  https://ille.com.ng
  * Description: Generates SEO-optimized posts via admin UI or REST endpoint with supervised/unsupervised workflows.
- * Version:     2.0.0
+ * Version:     1.0.1
  * Author:      ILLE
  * License:     GPL-2.0+
  * Text Domain: ille-pg
@@ -11,7 +11,7 @@
 
 if ( ! defined( 'ABSPATH' ) ) exit;
 
-define( 'ILLE_PG_VERSION',  '2.0.0' );
+define( 'ILLE_PG_VERSION',  '1.0.1' );
 define( 'ILLE_PG_DIR',      plugin_dir_path( __FILE__ ) );
 define( 'ILLE_PG_URL',      plugin_dir_url( __FILE__ ) );
 define( 'ILLE_PG_BASENAME', plugin_basename( __FILE__ ) );
