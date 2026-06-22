@@ -243,27 +243,60 @@
     }
 
     // =========================================================================
-    // Regenerate API key
+    // Per-user API key regeneration
     // =========================================================================
 
-    $('#ille-regenerate-key').on('click', function () {
-        const $warning = $('#ille-regen-warning');
-        if (!$warning.is(':hidden')) {
-            // Second click — confirm and regenerate
-            $.ajax({
-                url:    ILLE_PG.ajax_url,
-                method: 'POST',
-                data:   { action: 'ille_pg_regenerate_key', nonce: ILLE_PG.nonce },
-                success: function (res) {
-                    if (res.success) {
-                        $('#ille-api-key-display').val(res.data.api_key);
-                        $warning.attr('hidden', true);
-                    }
-                }
-            });
-        } else {
-            $warning.removeAttr('hidden');
+    $(document).on('click', '.ille-pg-regen-user-key', function () {
+        const $btn      = $(this);
+        const userId    = $btn.data('user-id');
+        const userName  = $btn.data('user-name');
+        const isRegen   = $btn.text().trim() === 'Regenerate';
+
+        if ( isRegen && !$btn.data('confirmed') ) {
+            $btn.data('confirmed', true).text('Confirm?').addClass('ille-pg-btn--warning');
+            setTimeout(() => {
+                $btn.data('confirmed', false).text('Regenerate').removeClass('ille-pg-btn--warning');
+            }, 3000);
+            return;
         }
+
+        $btn.prop('disabled', true).text('…');
+
+        $.ajax({
+            url:    ILLE_PG.ajax_url,
+            method: 'POST',
+            data:   { action: 'ille_pg_regenerate_key', nonce: ILLE_PG.nonce, user_id: userId },
+            success: function (res) {
+                if (res.success) {
+                    const inputId = 'ille-user-key-' + userId;
+                    let $input = $('#' + inputId);
+
+                    if ($input.length) {
+                        $input.val(res.data.api_key);
+                    } else {
+                        // First-time generation — replace "No key generated" span
+                        const $row = $btn.closest('.ille-pg-user-key-row__actions');
+                        $row.find('.ille-pg-hint').replaceWith(
+                            $('<input>').attr({
+                                type: 'text', id: inputId, readonly: true,
+                                class: 'ille-pg-input ille-pg-input--mono ille-pg-user-key-input',
+                                value: res.data.api_key
+                            })
+                        );
+                        $btn.before(
+                            $('<button>').attr({type: 'button'})
+                                .addClass('ille-pg-btn ille-pg-btn--sm ille-pg-copy-btn')
+                                .attr('data-copy-input', inputId)
+                                .text('Copy')
+                        );
+                    }
+                    $btn.data('confirmed', false).text('Regenerate').removeClass('ille-pg-btn--warning');
+                }
+            },
+            complete: function () {
+                $btn.prop('disabled', false);
+            }
+        });
     });
 
     // =========================================================================
@@ -360,6 +393,94 @@
             complete: function () {
                 $btn.prop('disabled', false).text('Test');
             }
+        });
+    });
+
+    // =========================================================================
+    // Activity log actions
+    // =========================================================================
+
+    function logStatus( msg, isError ) {
+        const $el = $('#ille-log-action-status');
+        $el.text( msg )
+           .removeClass('ille-pg-alert--error')
+           .removeAttr('hidden');
+        if ( isError ) $el.addClass('ille-pg-alert--error');
+    }
+
+    $('#ille-log-refresh').on('click', function () {
+        const $btn = $(this);
+        $btn.addClass('spin').prop('disabled', true);
+        setTimeout(() => { location.reload(); }, 300);
+    });
+
+    $('#ille-log-export').on('click', function () {
+        const $btn = $(this).prop('disabled', true).addClass('spin');
+        $.ajax({
+            url: ILLE_PG.ajax_url, method: 'POST',
+            data: { action: 'ille_pg_log_export', nonce: ILLE_PG.nonce },
+            success: function (res) {
+                if (!res.success) { logStatus(res.data.message, true); return; }
+                const bytes    = atob(res.data.csv);
+                const arr      = new Uint8Array(bytes.length);
+                for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
+                const blob     = new Blob([arr], { type: 'text/csv' });
+                const url      = URL.createObjectURL(blob);
+                const a        = document.createElement('a');
+                a.href = url; a.download = res.data.filename;
+                document.body.appendChild(a); a.click();
+                document.body.removeChild(a); URL.revokeObjectURL(url);
+            },
+            error: function () { logStatus('Export failed.', true); },
+            complete: function () { $btn.prop('disabled', false).removeClass('spin'); }
+        });
+    });
+
+    $('#ille-log-truncate').on('click', function () {
+        const $btn = $(this);
+        if (!$btn.data('confirmed')) {
+            $btn.data('confirmed', true).addClass('ille-pg-icon-btn--warning-active');
+            $btn.attr('title', 'Click again to confirm truncate');
+            setTimeout(() => {
+                $btn.data('confirmed', false)
+                    .removeClass('ille-pg-icon-btn--warning-active')
+                    .attr('title', 'Truncate log');
+            }, 3000);
+            return;
+        }
+        $btn.prop('disabled', true).addClass('spin');
+        $.ajax({
+            url: ILLE_PG.ajax_url, method: 'POST',
+            data: { action: 'ille_pg_log_truncate', nonce: ILLE_PG.nonce },
+            success: function (res) {
+                if (res.success) { logStatus('Log truncated.'); setTimeout(() => location.reload(), 800); }
+                else { logStatus(res.data.message, true); }
+            },
+            complete: function () { $btn.prop('disabled', false).removeClass('spin').attr('title', 'Truncate log'); }
+        });
+    });
+
+    $('#ille-log-delete').on('click', function () {
+        const $btn = $(this);
+        if (!$btn.data('confirmed')) {
+            $btn.data('confirmed', true).addClass('ille-pg-icon-btn--danger-active');
+            $btn.attr('title', 'Click again to confirm delete');
+            setTimeout(() => {
+                $btn.data('confirmed', false)
+                    .removeClass('ille-pg-icon-btn--danger-active')
+                    .attr('title', 'Delete log file');
+            }, 3000);
+            return;
+        }
+        $btn.prop('disabled', true).addClass('spin');
+        $.ajax({
+            url: ILLE_PG.ajax_url, method: 'POST',
+            data: { action: 'ille_pg_log_delete', nonce: ILLE_PG.nonce },
+            success: function (res) {
+                if (res.success) { logStatus('Log deleted.'); setTimeout(() => location.reload(), 800); }
+                else { logStatus(res.data.message, true); }
+            },
+            complete: function () { $btn.prop('disabled', false).removeClass('spin').attr('title', 'Delete log file'); }
         });
     });
 

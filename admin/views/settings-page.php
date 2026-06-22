@@ -1,7 +1,6 @@
 <?php
 if ( ! defined( 'ABSPATH' ) ) exit;
 
-$api_key      = ILLE_PG_Settings::get_api_key();
 $endpoint_url = ILLE_PG_Settings::get_endpoint_url();
 $schedules    = ILLE_PG_Settings::get_schedules();
 $next_runs    = ILLE_PG_Scheduler::get_next_runs();
@@ -38,20 +37,6 @@ while ( count( $schedules ) < ILLE_PG_Settings::MAX_SCHEDULES ) {
         </a>
     </div>
 
-    <!-- Active Endpoint Status -->
-    <div class="ille-pg-card ille-pg-endpoint-status">
-        <div class="ille-pg-card__header">
-            <h2>Active Endpoint</h2>
-            <span class="ille-pg-endpoint-indicator" id="ille-endpoint-status-dot"></span>
-        </div>
-        <div class="ille-pg-copy-row">
-            <code class="ille-pg-code" id="ille-active-endpoint-url"><?php echo esc_html( $endpoint_url ); ?></code>
-            <button type="button" class="ille-pg-btn ille-pg-btn--sm ille-pg-copy-btn" data-copy="ille-active-endpoint-url">Copy</button>
-            <button type="button" id="ille-test-endpoint" class="ille-pg-btn ille-pg-btn--sm">Test</button>
-        </div>
-        <p class="ille-pg-hint" id="ille-endpoint-test-result"></p>
-    </div>
-
     <!-- Tab Nav -->
     <div class="ille-pg-tabs" role="tablist">
         <button class="ille-pg-tab active" data-tab="endpoint" role="tab">Endpoint</button>
@@ -59,6 +44,9 @@ while ( count( $schedules ) < ILLE_PG_Settings::MAX_SCHEDULES ) {
         <button class="ille-pg-tab" data-tab="ai"       role="tab">AI Models</button>
         <button class="ille-pg-tab" data-tab="prompts"  role="tab">Prompts</button>
         <button class="ille-pg-tab" data-tab="schedule" role="tab">Schedules</button>
+        <?php if ( current_user_can( 'manage_options' ) ) : ?>
+        <button class="ille-pg-tab" data-tab="log"      role="tab">Activity Log</button>
+        <?php endif; ?>
     </div>
 
     <form id="ille-pg-settings-form">
@@ -67,6 +55,21 @@ while ( count( $schedules ) < ILLE_PG_Settings::MAX_SCHEDULES ) {
              TAB: ENDPOINT
         ================================================================ -->
         <div class="ille-pg-tab-panel active" data-panel="endpoint">
+
+            <!-- Active Endpoint Status -->
+            <div class="ille-pg-card ille-pg-endpoint-status">
+                <div class="ille-pg-card__header">
+                    <h2>Active Endpoint</h2>
+                    <span class="ille-pg-endpoint-indicator" id="ille-endpoint-status-dot"></span>
+                </div>
+                <div class="ille-pg-copy-row">
+                    <code class="ille-pg-code" id="ille-active-endpoint-url"><?php echo esc_html( $endpoint_url ); ?></code>
+                    <button type="button" class="ille-pg-btn ille-pg-btn--sm ille-pg-copy-btn" data-copy="ille-active-endpoint-url">Copy</button>
+                    <button type="button" id="ille-test-endpoint" class="ille-pg-btn ille-pg-btn--sm">Test</button>
+                </div>
+                <p class="ille-pg-hint" id="ille-endpoint-test-result"></p>
+            </div>
+
             <div class="ille-pg-card">
                 <div class="ille-pg-card__header"><h2>Endpoint Configuration</h2></div>
 
@@ -143,31 +146,14 @@ while ( count( $schedules ) < ILLE_PG_Settings::MAX_SCHEDULES ) {
              TAB: AUTH & ROLES
         ================================================================ -->
         <div class="ille-pg-tab-panel" data-panel="auth">
-            <div class="ille-pg-card">
-                <div class="ille-pg-card__header"><h2>API Key</h2></div>
-
-                <div class="ille-pg-field">
-                    <label class="ille-pg-label">Endpoint Secret Key</label>
-                    <p class="ille-pg-hint">Pass as <code>X-API-Key</code> header or <code>?api_key=</code> parameter. Not required for logged-in users with an allowed role.</p>
-                    <div class="ille-pg-copy-row">
-                        <input type="text" id="ille-api-key-display" class="ille-pg-input ille-pg-input--mono"
-                               value="<?php echo esc_attr( $api_key ); ?>" readonly />
-                        <button type="button" class="ille-pg-btn ille-pg-btn--sm ille-pg-copy-btn" data-copy-input="ille-api-key-display">Copy</button>
-                        <button type="button" id="ille-regenerate-key" class="ille-pg-btn ille-pg-btn--sm ille-pg-btn--danger">Regenerate</button>
-                    </div>
-                    <p class="ille-pg-alert ille-pg-alert--warning" id="ille-regen-warning" hidden>
-                        Regenerating will invalidate the current key. Any cron jobs or external callers must be updated.
-                    </p>
-                </div>
-            </div>
 
             <div class="ille-pg-card">
                 <div class="ille-pg-card__header"><h2>Allowed Roles</h2></div>
-                <p class="ille-pg-hint">Users with these roles can use the admin UI and call the endpoint without an API key.</p>
+                <p class="ille-pg-hint">Users with these roles can access the admin UI and the REST endpoint. Each user gets their own API key for external access.</p>
 
                 <div class="ille-pg-checks">
                     <?php foreach ( $all_roles as $role_slug => $role_name ) :
-                        $checked = in_array( $role_slug, $saved_roles, true ) ? 'checked' : '';
+                        $checked  = in_array( $role_slug, $saved_roles, true ) ? 'checked' : '';
                         $disabled = ( $role_slug === 'administrator' ) ? 'disabled checked' : $checked;
                     ?>
                         <label class="ille-pg-check">
@@ -181,6 +167,96 @@ while ( count( $schedules ) < ILLE_PG_Settings::MAX_SCHEDULES ) {
                         </label>
                     <?php endforeach; ?>
                 </div>
+            </div>
+
+            <div class="ille-pg-card">
+                <div class="ille-pg-card__header">
+                    <h2>User API Keys</h2>
+                    <span class="ille-pg-badge">Per-user · Audit trail</span>
+                </div>
+
+                <?php
+                $is_admin      = current_user_can( 'manage_options' );
+                $current_uid   = get_current_user_id();
+
+                // Admins see all allowed users; others see only themselves
+                if ( $is_admin ) {
+                    $all_allowed = ILLE_PG_Settings::get_users_with_allowed_roles();
+                    // Always include the current admin; include others only if they have an active key
+                    $allowed_users = array_filter( $all_allowed, function( $u ) use ( $current_uid ) {
+                        return $u->ID === $current_uid || ! empty( ILLE_PG_Settings::get_user_api_key( $u->ID ) );
+                    } );
+                } else {
+                    $allowed_users = array_filter( [ get_userdata( $current_uid ) ] );
+                }
+
+                if ( $is_admin ) : ?>
+                    <p class="ille-pg-hint">Manage API keys for all users with allowed roles. Posts created via each key are attributed to that user. Your own key is highlighted.</p>
+                <?php else : ?>
+                    <p class="ille-pg-hint">Your personal API key for external access to the endpoint. Posts created with this key will be attributed to you.</p>
+                <?php endif; ?>
+
+                <?php if ( empty( $allowed_users ) ) : ?>
+                    <p class="ille-pg-hint">No users found with the allowed roles.</p>
+                <?php else : ?>
+                    <div class="ille-pg-user-keys">
+                        <?php foreach ( $allowed_users as $u ) :
+                            $u_key      = ILLE_PG_Settings::get_user_api_key( $u->ID );
+                            $u_last     = get_user_meta( $u->ID, ILLE_PG_Settings::USER_META_API_KEY_LAST, true );
+                            $u_roles    = array_map( fn( $r ) => ucfirst( $r ), array_intersect( $u->roles, $saved_roles ) );
+                            $key_exists = ! empty( $u_key );
+                            $is_me      = ( $u->ID === $current_uid );
+                            // Non-admins can only manage their own key
+                            $can_manage = $is_admin || $is_me;
+                        ?>
+                            <div class="ille-pg-user-key-row <?php echo $is_me ? 'ille-pg-user-key-row--me' : ''; ?>">
+                                <div class="ille-pg-user-key-row__info">
+                                    <span class="ille-pg-user-key-row__avatar <?php echo $is_me ? 'ille-pg-user-key-row__avatar--me' : ''; ?>">
+                                        <?php echo esc_html( strtoupper( substr( $u->display_name, 0, 1 ) ) ); ?>
+                                    </span>
+                                    <div>
+                                        <strong>
+                                            <?php echo esc_html( $u->display_name ); ?>
+                                            <?php if ( $is_me ) : ?>
+                                                <span class="ille-pg-badge ille-pg-badge--ai">You</span>
+                                            <?php endif; ?>
+                                        </strong>
+                                        <span class="ille-pg-user-key-row__meta">
+                                            <?php echo esc_html( implode( ', ', $u_roles ) ); ?>
+                                            <?php if ( $u_last ) : ?>
+                                                · Last used: <?php echo esc_html( date( 'M j, Y g:i A', strtotime( $u_last ) ) ); ?>
+                                            <?php elseif ( $key_exists ) : ?>
+                                                · Never used
+                                            <?php endif; ?>
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="ille-pg-user-key-row__actions">
+                                    <?php if ( $key_exists ) : ?>
+                                        <input type="text"
+                                            id="ille-user-key-<?php echo esc_attr( $u->ID ); ?>"
+                                            class="ille-pg-input ille-pg-input--mono ille-pg-user-key-input"
+                                            value="<?php echo esc_attr( $u_key ); ?>"
+                                            readonly />
+                                        <button type="button"
+                                            class="ille-pg-btn ille-pg-btn--sm ille-pg-copy-btn"
+                                            data-copy-input="ille-user-key-<?php echo esc_attr( $u->ID ); ?>">Copy</button>
+                                    <?php else : ?>
+                                        <span class="ille-pg-hint">No key yet</span>
+                                    <?php endif; ?>
+                                    <?php if ( $can_manage ) : ?>
+                                        <button type="button"
+                                            class="ille-pg-btn ille-pg-btn--sm ille-pg-btn--danger ille-pg-regen-user-key"
+                                            data-user-id="<?php echo esc_attr( $u->ID ); ?>"
+                                            data-user-name="<?php echo esc_attr( $u->display_name ); ?>">
+                                            <?php echo $key_exists ? 'Regenerate' : 'Generate'; ?>
+                                        </button>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                <?php endif; ?>
             </div>
         </div>
 
@@ -350,6 +426,141 @@ while ( count( $schedules ) < ILLE_PG_Settings::MAX_SCHEDULES ) {
                 </div>
             </div>
         </div>
+
+        <!-- ================================================================
+             TAB: ACTIVITY LOG (admin only)
+        ================================================================ -->
+        <?php if ( current_user_can( 'manage_options' ) ) :
+            $log_stats   = ILLE_PG_Logger::get_stats();
+            $log_entries = ILLE_PG_Logger::get_entries( 200 );
+
+            $event_labels = [
+                ILLE_PG_Logger::EVENT_POST_CREATED     => [ 'Post Created',      'green'  ],
+                ILLE_PG_Logger::EVENT_SETTINGS_CHANGED => [ 'Settings Changed',  'orange' ],
+                ILLE_PG_Logger::EVENT_API_KEY_ACTION   => [ 'API Key Action',    'blue'   ],
+                ILLE_PG_Logger::EVENT_LOG_EXPORTED     => [ 'Log Exported',      'muted'  ],
+                ILLE_PG_Logger::EVENT_LOG_TRUNCATED    => [ 'Log Truncated',     'muted'  ],
+                ILLE_PG_Logger::EVENT_LOG_DELETED      => [ 'Log Deleted',       'danger' ],
+                ILLE_PG_Logger::EVENT_ENDPOINT_TESTED  => [ 'Endpoint Tested',   'muted'  ],
+                ILLE_PG_Logger::EVENT_ENDPOINT_ERROR   => [ 'Endpoint Error',    'danger' ],
+            ];
+
+            $trigger_labels = [
+                ILLE_PG_Logger::TRIGGER_MANUAL   => 'Manual',
+                ILLE_PG_Logger::TRIGGER_ENDPOINT => 'Endpoint',
+                ILLE_PG_Logger::TRIGGER_SCHEDULE => 'Schedule',
+            ];
+        ?>
+        <div class="ille-pg-tab-panel" data-panel="log">
+            <div class="ille-pg-card">
+                <div class="ille-pg-card__header">
+                    <h2>Activity Log</h2>
+                    <div class="ille-pg-log-header-actions">
+                        <button type="button" id="ille-log-refresh"  class="ille-pg-icon-btn" title="Refresh log"><span class="dashicons dashicons-update"></span></button>
+                        <button type="button" id="ille-log-export"   class="ille-pg-icon-btn" title="Export CSV"><span class="dashicons dashicons-download"></span></button>
+                        <button type="button" id="ille-log-truncate" class="ille-pg-icon-btn ille-pg-icon-btn--warning" title="Truncate log"><span class="dashicons dashicons-trash"></span></button>
+                        <button type="button" id="ille-log-delete"   class="ille-pg-icon-btn ille-pg-icon-btn--danger"  title="Delete log file"><span class="dashicons dashicons-dismiss"></span></button>
+                    </div>
+                </div>
+
+                <!-- Stats bar -->
+                <div class="ille-pg-log-stats">
+                    <div class="ille-pg-log-stat">
+                        <span class="ille-pg-log-stat__value"><?php echo esc_html( number_format( $log_stats['count'] ) ); ?></span>
+                        <span class="ille-pg-log-stat__label">Total entries</span>
+                    </div>
+                    <div class="ille-pg-log-stat">
+                        <span class="ille-pg-log-stat__value"><?php echo esc_html( size_format( $log_stats['size'] ) ); ?></span>
+                        <span class="ille-pg-log-stat__label">File size</span>
+                    </div>
+                    <div class="ille-pg-log-stat">
+                        <span class="ille-pg-log-stat__value"><?php echo $log_stats['oldest'] ? esc_html( date( 'M j, Y', strtotime( $log_stats['oldest'] ) ) ) : '—'; ?></span>
+                        <span class="ille-pg-log-stat__label">Oldest entry</span>
+                    </div>
+                    <div class="ille-pg-log-stat">
+                        <span class="ille-pg-log-stat__value"><?php echo $log_stats['newest'] ? esc_html( date( 'M j, Y', strtotime( $log_stats['newest'] ) ) ) : '—'; ?></span>
+                        <span class="ille-pg-log-stat__label">Latest entry</span>
+                    </div>
+                </div>
+
+                <p class="ille-pg-hint">Showing last <?php echo count( $log_entries ); ?> of <?php echo esc_html( $log_stats['count'] ); ?> entries. Export CSV for full history.</p>
+
+                <?php if ( empty( $log_entries ) ) : ?>
+                    <p class="ille-pg-hint" style="text-align:center;padding:32px 0">No activity recorded yet.</p>
+                <?php else : ?>
+                    <div class="ille-pg-log-table-wrap">
+                        <table class="ille-pg-log-table">
+                            <thead>
+                                <tr>
+                                    <th>Timestamp</th>
+                                    <th>Event</th>
+                                    <th>Trigger</th>
+                                    <th>User</th>
+                                    <th>Details</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ( $log_entries as $entry ) :
+                                    $ev      = $entry['event'] ?? '';
+                                    $label   = $event_labels[ $ev ][0] ?? ucwords( str_replace( '_', ' ', $ev ) );
+                                    $colour  = $event_labels[ $ev ][1] ?? 'muted';
+                                    $trigger = $trigger_labels[ $entry['trigger'] ?? '' ] ?? ( $entry['trigger'] ?? '' );
+                                    $data    = $entry['data'] ?? [];
+
+                                    // Format details based on event type
+                                    $details = '';
+                                    if ( $ev === ILLE_PG_Logger::EVENT_POST_CREATED ) {
+                                        $details = sprintf( '<a href="%s" target="_blank">%s</a> · %s',
+                                            esc_url( $data['post_url'] ?? '#' ),
+                                            esc_html( $data['title'] ?? '' ),
+                                            esc_html( ucfirst( $data['status'] ?? '' ) )
+                                        );
+                                    } elseif ( $ev === ILLE_PG_Logger::EVENT_SETTINGS_CHANGED ) {
+                                        $details = sprintf( '<code>%s</code> <span class="ille-pg-log-prev">%s</span> → <span class="ille-pg-log-new">%s</span>',
+                                            esc_html( $data['key']  ?? '' ),
+                                            esc_html( $data['prev'] ?? '' ),
+                                            esc_html( $data['new']  ?? '' )
+                                        );
+                                    } elseif ( $ev === ILLE_PG_Logger::EVENT_API_KEY_ACTION ) {
+                                        $details = sprintf( '%s key for <strong>%s</strong>',
+                                            esc_html( ucfirst( $data['action'] ?? '' ) ),
+                                            esc_html( $data['target_username'] ?? '' )
+                                        );
+                                    } elseif ( $ev === ILLE_PG_Logger::EVENT_ENDPOINT_ERROR ) {
+                                        $reason_map = [
+                                            'missing_api_key'     => 'Missing API key',
+                                            'invalid_api_key'     => 'Invalid API key',
+                                            'role_not_permitted'  => 'Role not permitted',
+                                            'post_creation_failed'=> 'Post creation failed',
+                                        ];
+                                        $reason  = $reason_map[ $data['reason'] ?? '' ] ?? ucwords( str_replace( '_', ' ', $data['reason'] ?? '' ) );
+                                        $extra   = '';
+                                        if ( ! empty( $data['key_preview'] ) ) $extra = ' · key: <code>' . esc_html( $data['key_preview'] ) . '</code>';
+                                        if ( ! empty( $data['username'] )    ) $extra = ' · user: <strong>' . esc_html( $data['username'] ) . '</strong>';
+                                        if ( ! empty( $data['error'] )       ) $extra = ' · ' . esc_html( $data['error'] );
+                                        if ( ! empty( $data['ip'] )          ) $extra .= ' · IP: <code>' . esc_html( $data['ip'] ) . '</code>';
+                                        $details = $reason . $extra;
+                                    } else {
+                                        $details = esc_html( wp_json_encode( $data ) );
+                                    }
+                                ?>
+                                    <tr>
+                                        <td class="ille-pg-log-ts"><?php echo esc_html( $entry['ts'] ?? '' ); ?></td>
+                                        <td><span class="ille-pg-log-badge ille-pg-log-badge--<?php echo esc_attr( $colour ); ?>"><?php echo esc_html( $label ); ?></span></td>
+                                        <td class="ille-pg-log-trigger"><?php echo esc_html( $trigger ); ?></td>
+                                        <td class="ille-pg-log-user"><?php echo esc_html( $entry['uname'] ?? '' ); ?></td>
+                                        <td class="ille-pg-log-details"><?php echo wp_kses( $details, [ 'a' => [ 'href' => [], 'target' => [] ], 'code' => [], 'strong' => [], 'span' => [ 'class' => [] ] ] ); ?></td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                <?php endif; ?>
+
+                <p class="ille-pg-alert" id="ille-log-action-status" hidden></p>
+            </div>
+        </div>
+        <?php endif; ?>
 
         <!-- Save Button -->
         <div class="ille-pg-settings-footer">

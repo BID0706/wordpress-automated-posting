@@ -678,6 +678,76 @@
 }
 
 /* ============================================================================
+   User API key rows
+   ============================================================================ */
+
+.ille-pg-user-keys { display: flex; flex-direction: column; gap: 12px; }
+
+.ille-pg-user-key-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 14px;
+    border: 1.5px solid var(--ille-border);
+    border-radius: var(--ille-radius);
+    flex-wrap: wrap;
+}
+
+.ille-pg-user-key-row__info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+}
+
+.ille-pg-user-key-row__avatar {
+    width: 36px;
+    height: 36px;
+    background: var(--ille-accent-light);
+    color: var(--ille-accent);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+.ille-pg-user-key-row__info strong { display: block; font-size: 13px; }
+
+.ille-pg-user-key-row__meta {
+    font-size: 12px;
+    color: var(--ille-text-muted);
+}
+
+.ille-pg-user-key-row__actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.ille-pg-user-key-input { width: 240px; }
+
+.ille-pg-user-key-row--me {
+    border-color: var(--ille-accent);
+    background: var(--ille-accent-light);
+}
+
+.ille-pg-user-key-row__avatar--me {
+    background: var(--ille-accent);
+    color: #fff;
+}
+
+.ille-pg-btn--warning {
+    background: var(--ille-warning-bg);
+    color: var(--ille-warning);
+    border-color: #fde68a;
+}
+
+/* ============================================================================
    Endpoint status
    ============================================================================ */
 
@@ -716,3 +786,242 @@
 }
 
 .ille-pg-save-status.error { color: var(--ille-danger); }
+
+/* ============================================================================
+   Activity Log
+   ============================================================================ */
+
+.ille-pg-log-stats {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+    padding: 14px 18px;
+    background: var(--ille-bg);
+    border: 1px solid var(--ille-border);
+    border-radius: 8px;
+}
+
+.ille-pg-log-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.ille-pg-log-stat__label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: var(--ille-text-muted);
+    font-weight: 600;
+}
+
+.ille-pg-log-stat__value {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--ille-text);
+}
+
+.ille-pg-log-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+    align-items: center;
+}
+
+.ille-pg-log-table-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--ille-border);
+    border-radius: 10px;
+}
+
+.ille-pg-log-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.ille-pg-log-table thead th {
+    background: var(--ille-bg);
+    padding: 10px 14px;
+    text-align: left;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    color: var(--ille-text-muted);
+    border-bottom: 1px solid var(--ille-border);
+    white-space: nowrap;
+}
+
+.ille-pg-log-table tbody tr:nth-child(even) {
+    background: var(--ille-bg);
+}
+
+.ille-pg-log-table tbody tr:hover {
+    background: var(--ille-accent-light);
+}
+
+.ille-pg-log-table td {
+    padding: 9px 14px;
+    border-bottom: 1px solid var(--ille-border);
+    vertical-align: top;
+}
+
+.ille-pg-log-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.ille-pg-log-ts {
+    white-space: nowrap;
+    font-family: monospace;
+    font-size: 12px;
+    color: var(--ille-text-muted);
+}
+
+.ille-pg-log-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .02em;
+    white-space: nowrap;
+}
+
+.ille-pg-log-badge--green  { background: var(--ille-success-bg); color: #065f46; }
+.ille-pg-log-badge--orange { background: var(--ille-warning-bg); color: #92400e; }
+.ille-pg-log-badge--blue   { background: var(--ille-accent-light); color: var(--ille-accent-dark); }
+.ille-pg-log-badge--muted  { background: #f1f5f9; color: var(--ille-text-muted); }
+.ille-pg-log-badge--danger { background: var(--ille-danger-bg); color: #991b1b; }
+
+.ille-pg-log-details {
+    font-size: 12px;
+    color: var(--ille-text-muted);
+    line-height: 1.5;
+}
+
+.ille-pg-log-details code {
+    background: #f1f5f9;
+    border-radius: 3px;
+    padding: 1px 4px;
+    font-size: 11px;
+    color: var(--ille-text);
+}
+
+.ille-pg-log-prev {
+    text-decoration: line-through;
+    color: var(--ille-danger);
+    font-size: 11px;
+}
+
+.ille-pg-log-new {
+    color: var(--ille-success);
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.ille-pg-log-empty {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--ille-text-muted);
+    font-size: 13px;
+}
+
+#ille-log-action-status {
+    font-size: 13px;
+    color: var(--ille-success);
+    font-weight: 500;
+}
+
+#ille-log-action-status.ille-pg-alert--error {
+    color: var(--ille-danger);
+}
+
+/* ============================================================================
+   Icon buttons (log actions)
+   ============================================================================ */
+
+.ille-pg-log-header-actions {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+    margin-left: auto;
+}
+
+.ille-pg-icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    border: 1px solid var(--ille-border);
+    background: var(--ille-surface);
+    color: var(--ille-text-muted);
+    cursor: pointer;
+    transition: background .15s, color .15s, border-color .15s;
+    padding: 0;
+}
+
+.ille-pg-icon-btn:hover {
+    background: var(--ille-bg);
+    color: var(--ille-text);
+    border-color: #cbd5e1;
+}
+
+.ille-pg-icon-btn .dashicons {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+    line-height: 1;
+}
+
+.ille-pg-icon-btn--warning {
+    color: var(--ille-warning);
+    border-color: #fde68a;
+}
+
+.ille-pg-icon-btn--warning:hover {
+    background: var(--ille-warning-bg);
+    border-color: var(--ille-warning);
+}
+
+.ille-pg-icon-btn--danger {
+    color: var(--ille-danger);
+    border-color: #fca5a5;
+}
+
+.ille-pg-icon-btn--danger:hover {
+    background: var(--ille-danger-bg);
+    border-color: var(--ille-danger);
+}
+
+.ille-pg-icon-btn.spin .dashicons {
+    animation: ille-spin .6s linear infinite;
+}
+
+@keyframes ille-spin {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+}
+
+.ille-pg-icon-btn--warning-active {
+    background: var(--ille-warning-bg);
+    border-color: var(--ille-warning);
+    color: #92400e;
+}
+
+.ille-pg-icon-btn--danger-active {
+    background: var(--ille-danger-bg);
+    border-color: var(--ille-danger);
+    color: #991b1b;
+}
+
+/* Uniform icon color for log header — override warning/danger default tint */
+.ille-pg-log-header-actions .ille-pg-icon-btn--warning,
+.ille-pg-log-header-actions .ille-pg-icon-btn--danger {
+    color: var(--ille-text-muted);
+    border-color: var(--ille-border);
+}

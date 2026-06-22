@@ -21,7 +21,13 @@ class ILLE_PG_Post_Creator {
             'featured_image' => true,
             'post_status'    => 'publish',
             'scheduled_date' => '',
+            'author_id'      => 0,
         ] );
+
+        // Resolve author: explicit arg → current user → fallback to admin (ID 1)
+        if ( ! $args['author_id'] ) {
+            $args['author_id'] = get_current_user_id() ?: 1;
+        }
 
         // --- Phase 1: dummy content ---
         $content_data = self::generate_dummy_content( $args );
@@ -61,7 +67,7 @@ class ILLE_PG_Post_Creator {
             'post_content'  => wp_kses_post( $content_data['content'] ),
             'post_excerpt'  => sanitize_text_field( $content_data['excerpt'] ),
             'post_status'   => $post_status,
-            'post_author'   => get_current_user_id() ?: 1,
+            'post_author'   => $args['author_id'],
             'post_category' => [ $category_id ],
         ];
 
@@ -85,6 +91,20 @@ class ILLE_PG_Post_Creator {
         update_post_meta( $post_id, '_yoast_wpseo_focuskw',  sanitize_text_field( $keyword ) );
         update_post_meta( $post_id, '_yoast_wpseo_metadesc', sanitize_text_field( $content_data['excerpt'] ) );
         update_post_meta( $post_id, '_yoast_wpseo_title',    sanitize_text_field( $content_data['title'] ) . ' %%sep%% %%sitename%%' );
+
+        ILLE_PG_Logger::log(
+            ILLE_PG_Logger::EVENT_POST_CREATED,
+            [
+                'post_id'  => $post_id,
+                'title'    => $content_data['title'],
+                'status'   => $post_status,
+                'category' => $content_data['category'],
+                'keyword'  => $keyword,
+                'post_url' => get_permalink( $post_id ),
+            ],
+            $args['trigger'] ?? ILLE_PG_Logger::TRIGGER_MANUAL,
+            $args['author_id']
+        );
 
         return $post_id;
     }

@@ -4,7 +4,6 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 class ILLE_PG_Settings {
 
     // Option keys
-    const KEY_API_KEY          = 'ille_pg_api_key';
     const KEY_ALLOWED_ROLES    = 'ille_pg_allowed_roles';
     const KEY_POST_PROMPT      = 'ille_pg_post_prompt';
     const KEY_IMAGE_PROMPT     = 'ille_pg_image_prompt';
@@ -26,8 +25,46 @@ class ILLE_PG_Settings {
         return update_option( $key, $value );
     }
 
-    public static function get_api_key(): string {
-        return (string) self::get( self::KEY_API_KEY, '' );
+    // User meta key for per-user API keys
+    const USER_META_API_KEY      = 'ille_pg_api_key';
+    const USER_META_API_KEY_LAST = 'ille_pg_api_key_last_used';
+
+    // -------------------------------------------------------------------------
+    // Per-user API key helpers
+    // -------------------------------------------------------------------------
+
+    public static function get_user_api_key( int $user_id ): string {
+        return (string) get_user_meta( $user_id, self::USER_META_API_KEY, true );
+    }
+
+    public static function generate_user_api_key( int $user_id ): string {
+        $key = wp_generate_password( 32, false );
+        update_user_meta( $user_id, self::USER_META_API_KEY, $key );
+        delete_user_meta( $user_id, self::USER_META_API_KEY_LAST );
+        return $key;
+    }
+
+    public static function get_user_by_api_key( string $key ): WP_User|false {
+        if ( empty( $key ) ) return false;
+
+        $users = get_users( [
+            'meta_key'   => self::USER_META_API_KEY,
+            'meta_value' => $key,
+            'number'     => 1,
+        ] );
+
+        return ! empty( $users ) ? $users[0] : false;
+    }
+
+    public static function touch_api_key( int $user_id ): void {
+        update_user_meta( $user_id, self::USER_META_API_KEY_LAST, current_time( 'mysql' ) );
+    }
+
+    public static function get_users_with_allowed_roles(): array {
+        $roles = self::get_allowed_roles();
+        if ( empty( $roles ) ) return [];
+
+        return get_users( [ 'role__in' => $roles, 'orderby' => 'display_name' ] );
     }
 
     public static function get_allowed_roles(): array {
