@@ -938,3 +938,83 @@
 #ille-log-action-status.ille-pg-alert--error {
     color: var(--ille-danger);
 }
+
+/* ============================================================================
+   Icon buttons (log actions)
+   ============================================================================ */
+
+.ille-pg-log-header-actions {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+    margin-left: auto;
+}
+
+.ille-pg-icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    border: 1px solid var(--ille-border);
+    background: var(--ille-surface);
+    color: var(--ille-text-muted);
+    cursor: pointer;
+    transition: background .15s, color .15s, border-color .15s;
+    padding: 0;
+}
+
+.ille-pg-icon-btn:hover {
+    background: var(--ille-bg);
+    color: var(--ille-text);
+    border-color: #cbd5e1;
+}
+
+.ille-pg-icon-btn .dashicons {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+    line-height: 1;
+}
+
+.ille-pg-icon-btn--warning {
+    color: var(--ille-warning);
+    border-color: #fde68a;
+}
+
+.ille-pg-icon-btn--warning:hover {
+    background: var(--ille-warning-bg);
+    border-color: var(--ille-warning);
+}
+
+.ille-pg-icon-btn--danger {
+    color: var(--ille-danger);
+    border-color: #fca5a5;
+}
+
+.ille-pg-icon-btn--danger:hover {
+    background: var(--ille-danger-bg);
+    border-color: var(--ille-danger);
+}
+
+.ille-pg-icon-btn.spin .dashicons {
+    animation: ille-spin .6s linear infinite;
+}
+
+@keyframes ille-spin {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+}
+
+.ille-pg-icon-btn--warning-active {
+    background: var(--ille-warning-bg);
+    border-color: var(--ille-warning);
+    color: #92400e;
+}
+
+.ille-pg-icon-btn--danger-active {
+    background: var(--ille-danger-bg);
+    border-color: var(--ille-danger);
+    color: #991b1b;
+}

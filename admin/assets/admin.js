@@ -408,8 +408,14 @@
         if ( isError ) $el.addClass('ille-pg-alert--error');
     }
 
+    $('#ille-log-refresh').on('click', function () {
+        const $btn = $(this);
+        $btn.addClass('spin').prop('disabled', true);
+        setTimeout(() => { location.reload(); }, 300);
+    });
+
     $('#ille-log-export').on('click', function () {
-        const $btn = $(this).prop('disabled', true).text('Exporting…');
+        const $btn = $(this).prop('disabled', true).addClass('spin');
         $.ajax({
             url: ILLE_PG.ajax_url, method: 'POST',
             data: { action: 'ille_pg_log_export', nonce: ILLE_PG.nonce },
@@ -426,51 +432,55 @@
                 document.body.removeChild(a); URL.revokeObjectURL(url);
             },
             error: function () { logStatus('Export failed.', true); },
-            complete: function () { $btn.prop('disabled', false).text('Export CSV'); }
+            complete: function () { $btn.prop('disabled', false).removeClass('spin'); }
         });
     });
 
     $('#ille-log-truncate').on('click', function () {
         const $btn = $(this);
         if (!$btn.data('confirmed')) {
-            $btn.data('confirmed', true).text('Confirm truncate?');
-            setTimeout(() => $btn.data('confirmed', false).text('Truncate'), 3000);
+            $btn.data('confirmed', true).addClass('ille-pg-icon-btn--warning-active');
+            $btn.attr('title', 'Click again to confirm truncate');
+            setTimeout(() => {
+                $btn.data('confirmed', false)
+                    .removeClass('ille-pg-icon-btn--warning-active')
+                    .attr('title', 'Truncate log');
+            }, 3000);
             return;
         }
-        $btn.prop('disabled', true).text('Truncating…');
+        $btn.prop('disabled', true).addClass('spin');
         $.ajax({
             url: ILLE_PG.ajax_url, method: 'POST',
             data: { action: 'ille_pg_log_truncate', nonce: ILLE_PG.nonce },
             success: function (res) {
-                if (res.success) {
-                    logStatus('Log truncated. Reload to refresh the table.');
-                } else {
-                    logStatus(res.data.message, true);
-                }
+                if (res.success) { logStatus('Log truncated.'); setTimeout(() => location.reload(), 800); }
+                else { logStatus(res.data.message, true); }
             },
-            complete: function () { $btn.prop('disabled', false).text('Truncate'); }
+            complete: function () { $btn.prop('disabled', false).removeClass('spin').attr('title', 'Truncate log'); }
         });
     });
 
     $('#ille-log-delete').on('click', function () {
         const $btn = $(this);
         if (!$btn.data('confirmed')) {
-            $btn.data('confirmed', true).text('Confirm delete?');
-            setTimeout(() => $btn.data('confirmed', false).text('Delete Log'), 3000);
+            $btn.data('confirmed', true).addClass('ille-pg-icon-btn--danger-active');
+            $btn.attr('title', 'Click again to confirm delete');
+            setTimeout(() => {
+                $btn.data('confirmed', false)
+                    .removeClass('ille-pg-icon-btn--danger-active')
+                    .attr('title', 'Delete log file');
+            }, 3000);
             return;
         }
-        $btn.prop('disabled', true).text('Deleting…');
+        $btn.prop('disabled', true).addClass('spin');
         $.ajax({
             url: ILLE_PG.ajax_url, method: 'POST',
             data: { action: 'ille_pg_log_delete', nonce: ILLE_PG.nonce },
             success: function (res) {
-                if (res.success) {
-                    logStatus('Log file deleted. Reload to refresh the table.');
-                } else {
-                    logStatus(res.data.message, true);
-                }
+                if (res.success) { logStatus('Log deleted.'); setTimeout(() => location.reload(), 800); }
+                else { logStatus(res.data.message, true); }
             },
-            complete: function () { $btn.prop('disabled', false).text('Delete Log'); }
+            complete: function () { $btn.prop('disabled', false).removeClass('spin').attr('title', 'Delete log file'); }
         });
     });
 

@@ -454,10 +454,11 @@ while ( count( $schedules ) < ILLE_PG_Settings::MAX_SCHEDULES ) {
             <div class="ille-pg-card">
                 <div class="ille-pg-card__header">
                     <h2>Activity Log</h2>
-                    <div style="display:flex;gap:8px;align-items:center;margin-left:auto">
-                        <button type="button" id="ille-log-export" class="ille-pg-btn ille-pg-btn--sm">Export CSV</button>
-                        <button type="button" id="ille-log-truncate" class="ille-pg-btn ille-pg-btn--sm ille-pg-btn--warning">Truncate</button>
-                        <button type="button" id="ille-log-delete" class="ille-pg-btn ille-pg-btn--sm ille-pg-btn--danger">Delete Log</button>
+                    <div class="ille-pg-log-header-actions">
+                        <button type="button" id="ille-log-refresh"  class="ille-pg-icon-btn" title="Refresh log"><span class="dashicons dashicons-update"></span></button>
+                        <button type="button" id="ille-log-export"   class="ille-pg-icon-btn" title="Export CSV"><span class="dashicons dashicons-download"></span></button>
+                        <button type="button" id="ille-log-truncate" class="ille-pg-icon-btn ille-pg-icon-btn--warning" title="Truncate log"><span class="dashicons dashicons-trash"></span></button>
+                        <button type="button" id="ille-log-delete"   class="ille-pg-icon-btn ille-pg-icon-btn--danger"  title="Delete log file"><span class="dashicons dashicons-dismiss"></span></button>
                     </div>
                 </div>
 

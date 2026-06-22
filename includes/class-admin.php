@@ -144,15 +144,13 @@ class ILLE_PG_Admin {
 
         $fields = $_POST['settings'] ?? [];
 
-        // Simple string fields
+        // Simple text/password/radio fields
         $string_keys = [
             ILLE_PG_Settings::KEY_GEMINI_KEY,
             ILLE_PG_Settings::KEY_OPENAI_KEY,
             ILLE_PG_Settings::KEY_XAI_KEY,
             ILLE_PG_Settings::KEY_ACTIVE_MODEL,
             ILLE_PG_Settings::KEY_CUSTOM_ENDPOINT,
-            ILLE_PG_Settings::KEY_POST_PROMPT,
-            ILLE_PG_Settings::KEY_IMAGE_PROMPT,
         ];
 
         $endpoint_changed = isset( $fields[ ILLE_PG_Settings::KEY_CUSTOM_ENDPOINT ] )
@@ -162,6 +160,20 @@ class ILLE_PG_Admin {
             if ( isset( $fields[ $key ] ) ) {
                 $prev = get_option( $key, '' );
                 $new  = sanitize_textarea_field( $fields[ $key ] );
+                update_option( $key, $new );
+                ILLE_PG_Logger::log_settings_change( $key, $prev, $new );
+            }
+        }
+
+        // Prompt fields — allow safe HTML (sanitize_textarea_field strips tags)
+        $prompt_keys = [
+            ILLE_PG_Settings::KEY_POST_PROMPT,
+            ILLE_PG_Settings::KEY_IMAGE_PROMPT,
+        ];
+        foreach ( $prompt_keys as $key ) {
+            if ( isset( $fields[ $key ] ) ) {
+                $prev = get_option( $key, '' );
+                $new  = wp_kses_post( $fields[ $key ] );
                 update_option( $key, $new );
                 ILLE_PG_Logger::log_settings_change( $key, $prev, $new );
             }
@@ -191,8 +203,9 @@ class ILLE_PG_Admin {
 
         // Schedules
         if ( isset( $fields[ ILLE_PG_Settings::KEY_SCHEDULES ] ) ) {
-            $raw       = (array) $fields[ ILLE_PG_Settings::KEY_SCHEDULES ];
-            $schedules = [];
+            $prev_schedules = ILLE_PG_Settings::get_schedules();
+            $raw            = (array) $fields[ ILLE_PG_Settings::KEY_SCHEDULES ];
+            $schedules      = [];
             foreach ( array_slice( $raw, 0, ILLE_PG_Settings::MAX_SCHEDULES ) as $s ) {
                 $schedules[] = [
                     'enabled'     => ! empty( $s['enabled'] ),
@@ -207,6 +220,19 @@ class ILLE_PG_Admin {
             }
             update_option( ILLE_PG_Settings::KEY_SCHEDULES, $schedules );
             ILLE_PG_Scheduler::sync_schedules();
+
+            // Log each schedule that actually changed
+            foreach ( $schedules as $i => $new_s ) {
+                $old_s = $prev_schedules[ $i ] ?? [];
+                $label = $new_s['label'] ?: ( 'Schedule ' . ( $i + 1 ) );
+                if ( $old_s !== $new_s ) {
+                    ILLE_PG_Logger::log_settings_change(
+                        ILLE_PG_Settings::KEY_SCHEDULES . '[' . $i . '] ' . $label,
+                        $this->format_schedule( $old_s ),
+                        $this->format_schedule( $new_s )
+                    );
+                }
+            }
         }
 
         wp_send_json_success( [
@@ -244,6 +270,20 @@ class ILLE_PG_Admin {
             'api_key' => $new_key,
             'user_id' => $user_id,
         ] );
+    }
+
+    // -------------------------------------------------------------------------
+    // Helpers
+    // -------------------------------------------------------------------------
+
+    private function format_schedule( array $s ): string {
+        if ( empty( $s ) ) return '(none)';
+        $enabled = empty( $s['enabled'] ) ? 'off' : 'on';
+        $days    = implode( '/', $s['days'] ?? [] ) ?: 'daily';
+        $time    = $s['time'] ?? '08:00';
+        $status  = $s['post_status'] ?? 'publish';
+        $topic   = $s['topic'] ? ' | "' . $s['topic'] . '"' : '';
+        return "{$enabled} | {$days} @ {$time} | {$status}{$topic}";
     }
 
     // -------------------------------------------------------------------------
