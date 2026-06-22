@@ -1,0 +1,699 @@
+/* ============================================================================
+   ILLE Post Generator V2 — Admin Styles
+   Modern minimal design system
+   ============================================================================ */
+
+:root {
+    --ille-accent:       #6366f1;
+    --ille-accent-light: #eef2ff;
+    --ille-accent-dark:  #4f46e5;
+    --ille-success:      #10b981;
+    --ille-success-bg:   #ecfdf5;
+    --ille-warning:      #f59e0b;
+    --ille-warning-bg:   #fffbeb;
+    --ille-danger:       #ef4444;
+    --ille-danger-bg:    #fef2f2;
+    --ille-surface:      #ffffff;
+    --ille-bg:           #f8fafc;
+    --ille-border:       #e2e8f0;
+    --ille-text:         #1e293b;
+    --ille-text-muted:   #64748b;
+    --ille-radius:       10px;
+    --ille-radius-sm:    6px;
+    --ille-shadow:       0 1px 3px 0 rgb(0 0 0 / .1), 0 1px 2px -1px rgb(0 0 0 / .1);
+    --ille-shadow-md:    0 4px 6px -1px rgb(0 0 0 / .1), 0 2px 4px -2px rgb(0 0 0 / .1);
+    --ille-font:         -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* Reset inside our wrapper */
+.ille-pg-wrap *,
+.ille-pg-wrap *::before,
+.ille-pg-wrap *::after { box-sizing: border-box; }
+
+.ille-pg-wrap {
+    font-family: var(--ille-font);
+    color: var(--ille-text);
+    max-width: 860px;
+    margin: 20px 0;
+    background: var(--ille-bg);
+    min-height: 100vh;
+}
+
+/* ============================================================================
+   Header
+   ============================================================================ */
+
+.ille-pg-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 24px 0 20px;
+    margin-bottom: 8px;
+}
+
+.ille-pg-header__logo {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.ille-pg-header__icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    background: var(--ille-accent);
+    color: #fff;
+    border-radius: var(--ille-radius);
+    font-size: 20px;
+    flex-shrink: 0;
+}
+
+.ille-pg-header h1 {
+    font-size: 22px;
+    font-weight: 700;
+    margin: 0 0 2px;
+    color: var(--ille-text);
+}
+
+.ille-pg-header p {
+    font-size: 13px;
+    color: var(--ille-text-muted);
+    margin: 0;
+}
+
+/* ============================================================================
+   Card
+   ============================================================================ */
+
+.ille-pg-card {
+    background: var(--ille-surface);
+    border: 1px solid var(--ille-border);
+    border-radius: var(--ille-radius);
+    padding: 24px;
+    box-shadow: var(--ille-shadow);
+    margin-bottom: 16px;
+}
+
+.ille-pg-card__header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 20px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--ille-border);
+}
+
+.ille-pg-card__header h2 {
+    font-size: 15px;
+    font-weight: 600;
+    margin: 0;
+    color: var(--ille-text);
+}
+
+/* ============================================================================
+   Tabs
+   ============================================================================ */
+
+.ille-pg-tabs {
+    display: flex;
+    gap: 2px;
+    background: var(--ille-surface);
+    border: 1px solid var(--ille-border);
+    border-radius: var(--ille-radius);
+    padding: 4px;
+    margin-bottom: 16px;
+    box-shadow: var(--ille-shadow);
+}
+
+.ille-pg-tab {
+    flex: 1;
+    padding: 8px 14px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--ille-text-muted);
+    background: transparent;
+    border: none;
+    border-radius: var(--ille-radius-sm);
+    cursor: pointer;
+    transition: all .15s;
+    white-space: nowrap;
+}
+
+.ille-pg-tab:hover { color: var(--ille-text); background: var(--ille-bg); }
+
+.ille-pg-tab.active {
+    color: var(--ille-accent);
+    background: var(--ille-accent-light);
+    font-weight: 600;
+}
+
+.ille-pg-tab-panel { display: none; }
+.ille-pg-tab-panel.active { display: block; }
+
+/* ============================================================================
+   Form elements
+   ============================================================================ */
+
+.ille-pg-main { margin-top: 4px; }
+
+.ille-pg-field {
+    margin-bottom: 18px;
+}
+
+.ille-pg-field:last-child { margin-bottom: 0; }
+
+.ille-pg-label {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--ille-text);
+    margin-bottom: 7px;
+}
+
+.ille-pg-label__hint {
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--ille-text-muted);
+}
+
+.ille-pg-input {
+    width: 100%;
+    padding: 9px 12px;
+    font-size: 14px;
+    font-family: var(--ille-font);
+    color: var(--ille-text);
+    background: var(--ille-surface);
+    border: 1.5px solid var(--ille-border);
+    border-radius: var(--ille-radius-sm);
+    outline: none;
+    transition: border-color .15s, box-shadow .15s;
+    line-height: 1.5;
+}
+
+.ille-pg-input:focus {
+    border-color: var(--ille-accent);
+    box-shadow: 0 0 0 3px rgb(99 102 241 / .12);
+}
+
+.ille-pg-input--mono { font-family: 'Courier New', monospace; font-size: 13px; }
+
+.ille-pg-textarea {
+    width: 100%;
+    padding: 10px 12px;
+    font-size: 13px;
+    font-family: var(--ille-font);
+    color: var(--ille-text);
+    background: var(--ille-surface);
+    border: 1.5px solid var(--ille-border);
+    border-radius: var(--ille-radius-sm);
+    outline: none;
+    resize: vertical;
+    line-height: 1.6;
+    transition: border-color .15s;
+    display: block;
+    margin-bottom: 8px;
+}
+
+.ille-pg-textarea:focus {
+    border-color: var(--ille-accent);
+    box-shadow: 0 0 0 3px rgb(99 102 241 / .12);
+}
+
+.ille-pg-select {
+    padding: 9px 12px;
+    font-size: 14px;
+    font-family: var(--ille-font);
+    color: var(--ille-text);
+    background: var(--ille-surface);
+    border: 1.5px solid var(--ille-border);
+    border-radius: var(--ille-radius-sm);
+    outline: none;
+    cursor: pointer;
+    width: 100%;
+}
+
+.ille-pg-select:focus { border-color: var(--ille-accent); }
+
+.ille-pg-hint {
+    font-size: 12px;
+    color: var(--ille-text-muted);
+    margin: 5px 0 0;
+    line-height: 1.5;
+}
+
+.ille-pg-hint code {
+    background: var(--ille-bg);
+    border: 1px solid var(--ille-border);
+    border-radius: 4px;
+    padding: 1px 5px;
+    font-size: 12px;
+}
+
+.ille-pg-fields-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+@media (max-width: 600px) {
+    .ille-pg-fields-row { grid-template-columns: 1fr; }
+}
+
+/* ============================================================================
+   Radio buttons
+   ============================================================================ */
+
+.ille-pg-radio-group {
+    display: flex;
+    gap: 8px;
+}
+
+.ille-pg-radio {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    border: 1.5px solid var(--ille-border);
+    border-radius: var(--ille-radius-sm);
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--ille-text-muted);
+    transition: all .15s;
+    user-select: none;
+}
+
+.ille-pg-radio input[type="radio"] { display: none; }
+
+.ille-pg-radio__pip {
+    width: 14px;
+    height: 14px;
+    border: 2px solid var(--ille-border);
+    border-radius: 50%;
+    flex-shrink: 0;
+    transition: all .15s;
+}
+
+.ille-pg-radio:has(input:checked) {
+    border-color: var(--ille-accent);
+    color: var(--ille-accent);
+    background: var(--ille-accent-light);
+}
+
+.ille-pg-radio:has(input:checked) .ille-pg-radio__pip {
+    border-color: var(--ille-accent);
+    background: var(--ille-accent);
+    box-shadow: inset 0 0 0 3px var(--ille-surface);
+}
+
+/* ============================================================================
+   Checkboxes
+   ============================================================================ */
+
+.ille-pg-checks { display: flex; flex-direction: column; gap: 10px; }
+
+.ille-pg-check {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    font-size: 13px;
+    user-select: none;
+}
+
+.ille-pg-check input[type="checkbox"] { display: none; }
+
+.ille-pg-check__box {
+    width: 16px;
+    height: 16px;
+    border: 1.5px solid var(--ille-border);
+    border-radius: 4px;
+    flex-shrink: 0;
+    transition: all .15s;
+    position: relative;
+}
+
+.ille-pg-check:has(input:checked) .ille-pg-check__box {
+    background: var(--ille-accent);
+    border-color: var(--ille-accent);
+}
+
+.ille-pg-check:has(input:checked) .ille-pg-check__box::after {
+    content: '';
+    position: absolute;
+    left: 4px;
+    top: 1px;
+    width: 5px;
+    height: 9px;
+    border: 2px solid #fff;
+    border-top: none;
+    border-left: none;
+    transform: rotate(45deg);
+}
+
+/* ============================================================================
+   Toggle switch
+   ============================================================================ */
+
+.ille-pg-toggle { display: inline-flex; align-items: center; cursor: pointer; }
+.ille-pg-toggle input { display: none; }
+
+.ille-pg-toggle__track {
+    width: 36px;
+    height: 20px;
+    background: var(--ille-border);
+    border-radius: 10px;
+    position: relative;
+    transition: background .2s;
+    flex-shrink: 0;
+}
+
+.ille-pg-toggle__track::after {
+    content: '';
+    position: absolute;
+    left: 2px;
+    top: 2px;
+    width: 16px;
+    height: 16px;
+    background: #fff;
+    border-radius: 50%;
+    transition: transform .2s;
+    box-shadow: var(--ille-shadow);
+}
+
+.ille-pg-toggle input:checked + .ille-pg-toggle__track { background: var(--ille-accent); }
+.ille-pg-toggle input:checked + .ille-pg-toggle__track::after { transform: translateX(16px); }
+
+/* ============================================================================
+   Buttons
+   ============================================================================ */
+
+.ille-pg-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 10px 20px;
+    font-size: 14px;
+    font-family: var(--ille-font);
+    font-weight: 600;
+    border-radius: var(--ille-radius-sm);
+    border: 1.5px solid transparent;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all .15s;
+    white-space: nowrap;
+}
+
+.ille-pg-btn--primary {
+    background: var(--ille-accent);
+    color: #fff;
+    border-color: var(--ille-accent);
+}
+
+.ille-pg-btn--primary:hover { background: var(--ille-accent-dark); border-color: var(--ille-accent-dark); }
+.ille-pg-btn--primary:active { transform: scale(.98); }
+.ille-pg-btn--primary:disabled { opacity: .6; cursor: not-allowed; }
+
+.ille-pg-btn--ghost {
+    background: transparent;
+    color: var(--ille-text-muted);
+    border-color: var(--ille-border);
+}
+.ille-pg-btn--ghost:hover { color: var(--ille-text); background: var(--ille-bg); }
+
+.ille-pg-btn--sm { padding: 6px 12px; font-size: 12px; }
+
+.ille-pg-btn--danger {
+    background: var(--ille-danger-bg);
+    color: var(--ille-danger);
+    border-color: #fca5a5;
+}
+.ille-pg-btn--danger:hover { background: var(--ille-danger); color: #fff; }
+
+.ille-pg-btn__spinner {
+    width: 14px;
+    height: 14px;
+    border: 2px solid rgba(255,255,255,.4);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: ille-spin .6s linear infinite;
+    flex-shrink: 0;
+}
+
+@keyframes ille-spin { to { transform: rotate(360deg); } }
+
+.ille-pg-form-footer {
+    padding-top: 20px;
+    border-top: 1px solid var(--ille-border);
+    margin-top: 4px;
+}
+
+/* ============================================================================
+   Badges
+   ============================================================================ */
+
+.ille-pg-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    font-size: 11px;
+    font-weight: 600;
+    border-radius: 99px;
+    background: var(--ille-bg);
+    color: var(--ille-text-muted);
+    border: 1px solid var(--ille-border);
+    white-space: nowrap;
+}
+
+.ille-pg-badge--ai { background: var(--ille-accent-light); color: var(--ille-accent); border-color: #c7d2fe; }
+.ille-pg-badge--green { background: var(--ille-success-bg); color: var(--ille-success); border-color: #a7f3d0; }
+.ille-pg-badge--orange { background: var(--ille-warning-bg); color: var(--ille-warning); border-color: #fde68a; }
+
+/* ============================================================================
+   Alerts
+   ============================================================================ */
+
+.ille-pg-alert {
+    padding: 12px 14px;
+    border-radius: var(--ille-radius-sm);
+    font-size: 13px;
+    line-height: 1.5;
+    border: 1px solid transparent;
+}
+
+.ille-pg-alert--error {
+    background: var(--ille-danger-bg);
+    color: var(--ille-danger);
+    border-color: #fca5a5;
+    margin-top: 12px;
+}
+
+.ille-pg-alert--warning {
+    background: var(--ille-warning-bg);
+    color: #92400e;
+    border-color: #fde68a;
+    margin-top: 8px;
+}
+
+/* ============================================================================
+   Result panel
+   ============================================================================ */
+
+.ille-pg-result {
+    display: flex !important;
+    align-items: flex-start;
+    gap: 16px;
+    border-color: #a7f3d0;
+    background: var(--ille-success-bg);
+}
+
+.ille-pg-result[hidden] { display: none !important; }
+
+.ille-pg-result__icon {
+    width: 36px;
+    height: 36px;
+    background: var(--ille-success);
+    color: #fff;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+.ille-pg-result__body h3 { margin: 0 0 4px; font-size: 15px; color: #065f46; }
+.ille-pg-result__body p { font-size: 13px; color: #047857; margin: 0 0 10px; }
+
+.ille-pg-result__actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* ============================================================================
+   Copy row
+   ============================================================================ */
+
+.ille-pg-copy-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.ille-pg-copy-row .ille-pg-input,
+.ille-pg-copy-row .ille-pg-code { flex: 1; min-width: 0; }
+
+.ille-pg-code {
+    display: block;
+    padding: 9px 12px;
+    background: var(--ille-bg);
+    border: 1.5px solid var(--ille-border);
+    border-radius: var(--ille-radius-sm);
+    font-size: 12px;
+    font-family: 'Courier New', monospace;
+    color: var(--ille-text);
+    word-break: break-all;
+    line-height: 1.5;
+}
+
+.ille-pg-code-block {
+    background: #1e293b;
+    border-radius: var(--ille-radius);
+    padding: 16px;
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    line-height: 1.8;
+    overflow-x: auto;
+}
+
+.ille-pg-code-block p { color: #64748b; margin: 12px 0 0; }
+.ille-pg-code-block p:first-child { margin-top: 0; }
+.ille-pg-code-block code { color: #a5f3fc; display: block; }
+
+/* ============================================================================
+   AI Model cards
+   ============================================================================ */
+
+.ille-pg-models { display: flex; flex-direction: column; gap: 12px; }
+
+.ille-pg-model-card {
+    border: 1.5px solid var(--ille-border);
+    border-radius: var(--ille-radius);
+    padding: 14px 16px;
+    transition: border-color .15s;
+}
+
+.ille-pg-model-card.active,
+.ille-pg-model-card:has(input:checked) {
+    border-color: var(--ille-accent);
+    background: var(--ille-accent-light);
+}
+
+.ille-pg-model-card__header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    margin-bottom: 6px;
+}
+
+.ille-pg-model-card__header input[type="radio"] { display: none; }
+
+.ille-pg-model-card__name { font-size: 14px; font-weight: 600; flex: 1; }
+
+.ille-pg-model-card .ille-pg-hint { margin: 6px 0 10px; }
+
+/* ============================================================================
+   Schedules
+   ============================================================================ */
+
+.ille-pg-schedules { display: flex; flex-direction: column; gap: 12px; }
+
+.ille-pg-schedule {
+    border: 1.5px solid var(--ille-border);
+    border-radius: var(--ille-radius);
+    overflow: hidden;
+    transition: border-color .2s;
+}
+
+.ille-pg-schedule.enabled { border-color: var(--ille-accent); }
+
+.ille-pg-schedule__header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background: var(--ille-bg);
+    border-bottom: 1px solid var(--ille-border);
+}
+
+.ille-pg-schedule__label-input {
+    flex: 1;
+    padding: 6px 10px;
+    font-size: 13px;
+    font-weight: 500;
+    border-color: transparent;
+    background: transparent;
+}
+
+.ille-pg-schedule__label-input:focus {
+    background: var(--ille-surface);
+    border-color: var(--ille-accent);
+}
+
+.ille-pg-schedule__next { margin-left: auto; }
+
+.ille-pg-schedule__body {
+    padding: 16px;
+    display: none;
+}
+
+.ille-pg-schedule.enabled .ille-pg-schedule__body { display: block; }
+
+/* Days of week */
+.ille-pg-days { display: flex; gap: 6px; flex-wrap: wrap; }
+
+.ille-pg-day { cursor: pointer; }
+.ille-pg-day input { display: none; }
+
+.ille-pg-day span {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    border: 1.5px solid var(--ille-border);
+    border-radius: 50%;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ille-text-muted);
+    transition: all .15s;
+}
+
+.ille-pg-day:has(input:checked) span {
+    background: var(--ille-accent);
+    border-color: var(--ille-accent);
+    color: #fff;
+}
+
+/* ============================================================================
+   Settings footer
+   ============================================================================ */
+
+.ille-pg-settings-footer {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 20px 0;
+}
+
+.ille-pg-save-status {
+    font-size: 13px;
+    color: var(--ille-success);
+    font-weight: 500;
+}
+
+.ille-pg-save-status.error { color: var(--ille-danger); }

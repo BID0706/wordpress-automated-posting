@@ -1,0 +1,104 @@
+<?php
+if ( ! defined( 'ABSPATH' ) ) exit;
+
+class ILLE_PG_Settings {
+
+    // Option keys
+    const KEY_API_KEY          = 'ille_pg_api_key';
+    const KEY_ALLOWED_ROLES    = 'ille_pg_allowed_roles';
+    const KEY_POST_PROMPT      = 'ille_pg_post_prompt';
+    const KEY_IMAGE_PROMPT     = 'ille_pg_image_prompt';
+    const KEY_ACTIVE_MODEL     = 'ille_pg_active_model';
+    const KEY_GEMINI_KEY       = 'ille_pg_gemini_api_key';
+    const KEY_OPENAI_KEY       = 'ille_pg_openai_api_key';
+    const KEY_XAI_KEY          = 'ille_pg_xai_api_key';
+    const KEY_CUSTOM_ENDPOINT  = 'ille_pg_custom_endpoint';
+    const KEY_ALLOWED_PARAMS   = 'ille_pg_allowed_params';
+    const KEY_SCHEDULES        = 'ille_pg_schedules';
+
+    const MAX_SCHEDULES = 5;
+
+    public static function get( string $key, $default = null ) {
+        return get_option( $key, $default );
+    }
+
+    public static function set( string $key, $value ): bool {
+        return update_option( $key, $value );
+    }
+
+    public static function get_api_key(): string {
+        return (string) self::get( self::KEY_API_KEY, '' );
+    }
+
+    public static function get_allowed_roles(): array {
+        $roles = self::get( self::KEY_ALLOWED_ROLES, [ 'administrator' ] );
+        return is_array( $roles ) ? $roles : [ 'administrator' ];
+    }
+
+    public static function get_rest_route(): string {
+        $custom = trim( (string) self::get( self::KEY_CUSTOM_ENDPOINT, '' ) );
+        if ( $custom ) {
+            // Strip leading/trailing slashes, keep only the path segment
+            return sanitize_title( trim( $custom, '/' ) );
+        }
+        return 'generate-post';
+    }
+
+    public static function get_rest_namespace(): string {
+        return 'ille/v2';
+    }
+
+    public static function get_endpoint_url(): string {
+        return rest_url( self::get_rest_namespace() . '/' . self::get_rest_route() );
+    }
+
+    public static function get_schedules(): array {
+        $schedules = self::get( self::KEY_SCHEDULES, [] );
+        if ( ! is_array( $schedules ) ) return [];
+        return array_slice( $schedules, 0, self::MAX_SCHEDULES );
+    }
+
+    public static function get_allowed_params(): array {
+        $params = self::get( self::KEY_ALLOWED_PARAMS, [ 'topic', 'publish', 'focus_keyword', 'featured_image' ] );
+        return is_array( $params ) ? $params : [];
+    }
+
+    public static function get_post_prompt(): string {
+        return (string) self::get( self::KEY_POST_PROMPT, self::default_post_prompt() );
+    }
+
+    public static function get_image_prompt(): string {
+        return (string) self::get( self::KEY_IMAGE_PROMPT, self::default_image_prompt() );
+    }
+
+    public static function default_post_prompt(): string {
+        return 'You are an expert SEO content writer for ille.com.ng, a Nigerian lifestyle and business blog. Write a fully formatted, engaging blog post about: {topic}. Include a compelling introduction, 3-4 subheadings with substantive content, and a conclusion with a call to action. Minimum 700 words. Return clean HTML using only <p>, <h2>, <h3>, <ul>, <li>, <strong>, <em> tags.';
+    }
+
+    public static function default_image_prompt(): string {
+        return 'A photorealistic, high-quality image representing: {title}. Professional photography style, natural lighting, no text overlays, no watermarks. Suitable for a Nigerian lifestyle and business blog.';
+    }
+
+    public static function get_available_models(): array {
+        return [
+            'gemini-2.0-flash' => [
+                'label'    => 'Google Gemini 2.0 Flash',
+                'key_opt'  => self::KEY_GEMINI_KEY,
+                'free'     => true,
+                'note'     => 'Free tier: 1,500 req/day — <a href="https://aistudio.google.com/app/apikey" target="_blank">Get key</a>',
+            ],
+            'gpt-4o-mini' => [
+                'label'    => 'OpenAI GPT-4o Mini',
+                'key_opt'  => self::KEY_OPENAI_KEY,
+                'free'     => false,
+                'note'     => 'Paid — <a href="https://platform.openai.com/api-keys" target="_blank">Get key</a>',
+            ],
+            'grok-3-mini' => [
+                'label'    => 'xAI Grok 3 Mini',
+                'key_opt'  => self::KEY_XAI_KEY,
+                'free'     => true,
+                'note'     => 'Free credits — <a href="https://console.x.ai/" target="_blank">Get key</a>',
+            ],
+        ];
+    }
+}
