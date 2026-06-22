@@ -83,15 +83,21 @@ while ( count( $schedules ) < ILLE_PG_Settings::MAX_SCHEDULES ) {
                         Custom Endpoint Slug
                         <span class="ille-pg-label__hint">Override the default route slug (leave blank for default)</span>
                     </label>
-                    <input
-                        type="text"
-                        id="ille-custom-endpoint"
-                        class="ille-pg-input"
-                        name="settings[<?php echo esc_attr( ILLE_PG_Settings::KEY_CUSTOM_ENDPOINT ); ?>]"
-                        value="<?php echo esc_attr( ILLE_PG_Settings::get( ILLE_PG_Settings::KEY_CUSTOM_ENDPOINT, '' ) ); ?>"
-                        placeholder="e.g. my-custom-generate"
-                    />
+                    <div class="ille-pg-copy-row">
+                        <input
+                            type="text"
+                            id="ille-custom-endpoint"
+                            class="ille-pg-input"
+                            name="settings[<?php echo esc_attr( ILLE_PG_Settings::KEY_CUSTOM_ENDPOINT ); ?>]"
+                            value="<?php echo esc_attr( ILLE_PG_Settings::get( ILLE_PG_Settings::KEY_CUSTOM_ENDPOINT, '' ) ); ?>"
+                            placeholder="e.g. my-custom-generate"
+                        />
+                        <?php if ( ILLE_PG_Settings::get( ILLE_PG_Settings::KEY_CUSTOM_ENDPOINT, '' ) ) : ?>
+                            <button type="button" id="ille-reset-endpoint" class="ille-pg-btn ille-pg-btn--sm ille-pg-btn--danger">Reset to default</button>
+                        <?php endif; ?>
+                    </div>
                     <p class="ille-pg-hint">Result: <code><?php echo esc_html( rest_url( ILLE_PG_Settings::get_rest_namespace() . '/' ) ); ?><span id="ille-slug-preview"><?php echo esc_html( ILLE_PG_Settings::get_rest_route() ); ?></span></code></p>
+                    <p class="ille-pg-hint">Default: <code>generate-post</code></p>
                 </div>
 
                 <div class="ille-pg-field">
