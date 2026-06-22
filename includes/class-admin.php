@@ -6,9 +6,11 @@ class ILLE_PG_Admin {
     public function __construct() {
         add_action( 'admin_menu',             [ $this, 'register_menu' ] );
         add_action( 'admin_enqueue_scripts',  [ $this, 'enqueue_assets' ] );
-        add_action( 'wp_ajax_ille_pg_generate', [ $this, 'ajax_generate' ] );
-        add_action( 'wp_ajax_ille_pg_save_settings', [ $this, 'ajax_save_settings' ] );
+        add_action( 'wp_ajax_ille_pg_generate',       [ $this, 'ajax_generate' ] );
+        add_action( 'wp_ajax_ille_pg_save_settings',  [ $this, 'ajax_save_settings' ] );
         add_action( 'wp_ajax_ille_pg_regenerate_key', [ $this, 'ajax_regenerate_key' ] );
+        add_action( 'wp_ajax_ille_pg_test_endpoint',  [ $this, 'ajax_test_endpoint' ] );
+        add_action( 'admin_init', [ $this, 'maybe_flush_rewrite_rules' ] );
     }
 
     // -------------------------------------------------------------------------
@@ -158,9 +160,10 @@ class ILLE_PG_Admin {
             }
         }
 
-        // Flush rewrite rules so the new REST route slug takes effect immediately
+        // Schedule a rewrite flush on the next full page load so rest_api_init
+        // re-registers routes with the new slug before flushing.
         if ( $endpoint_changed ) {
-            flush_rewrite_rules();
+            update_option( 'ille_pg_needs_flush', '1' );
         }
 
         // Allowed roles (array)
@@ -195,7 +198,10 @@ class ILLE_PG_Admin {
             ILLE_PG_Scheduler::sync_schedules();
         }
 
-        wp_send_json_success( [ 'message' => 'Settings saved.' ] );
+        wp_send_json_success( [
+            'message'          => 'Settings saved.',
+            'endpoint_changed' => $endpoint_changed,
+        ] );
     }
 
     // -------------------------------------------------------------------------
@@ -213,5 +219,43 @@ class ILLE_PG_Admin {
         update_option( ILLE_PG_Settings::KEY_API_KEY, $new_key );
 
         wp_send_json_success( [ 'api_key' => $new_key ] );
+    }
+
+    // -------------------------------------------------------------------------
+    // AJAX: Test Endpoint
+    // -------------------------------------------------------------------------
+
+    public function ajax_test_endpoint() {
+        check_ajax_referer( 'ille_pg_nonce', 'nonce' );
+
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_send_json_error( [ 'message' => 'Permission denied.' ], 403 );
+        }
+
+        $endpoint_url = ILLE_PG_Settings::get_endpoint_url();
+
+        // Probe the route via the WordPress REST server directly (no HTTP round-trip)
+        $server = rest_get_server();
+        $routes = $server->get_routes( ILLE_PG_Settings::get_rest_namespace() );
+        $route  = '/' . ILLE_PG_Settings::get_rest_namespace() . '/' . ILLE_PG_Settings::get_rest_route();
+        $active = isset( $routes[ $route ] );
+
+        wp_send_json_success( [
+            'active'       => $active,
+            'endpoint_url' => $endpoint_url,
+            'route'        => $route,
+            'status'       => $active ? 'registered' : 'not_found',
+        ] );
+    }
+
+    // -------------------------------------------------------------------------
+    // Flush rewrite rules on first load after a slug change
+    // -------------------------------------------------------------------------
+
+    public function maybe_flush_rewrite_rules() {
+        if ( get_option( 'ille_pg_needs_flush' ) ) {
+            delete_option( 'ille_pg_needs_flush' );
+            flush_rewrite_rules();
+        }
     }
 }

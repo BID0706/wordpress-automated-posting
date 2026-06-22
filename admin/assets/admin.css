@@ -678,6 +678,27 @@
 }
 
 /* ============================================================================
+   Endpoint status
+   ============================================================================ */
+
+.ille-pg-endpoint-status { margin-bottom: 16px; }
+
+.ille-pg-endpoint-indicator {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--ille-border);
+    flex-shrink: 0;
+    transition: background .2s;
+}
+
+.ille-pg-endpoint-indicator.active  { background: var(--ille-success); }
+.ille-pg-endpoint-indicator.inactive { background: var(--ille-danger); }
+
+.ille-pg-hint--ok  { color: var(--ille-success) !important; }
+.ille-pg-hint--err { color: var(--ille-danger)  !important; }
+
+/* ============================================================================
    Settings footer
    ============================================================================ */
 

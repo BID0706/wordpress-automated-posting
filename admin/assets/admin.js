@@ -146,8 +146,15 @@
             },
             success: function (res) {
                 if (res.success) {
-                    $status.text('✓ Saved').removeClass('error');
-                    setTimeout(() => $status.text(''), 3000);
+                    if (res.data.endpoint_changed) {
+                        // Reload so rest_api_init re-registers the new slug,
+                        // then admin_init flushes rewrite rules
+                        $status.text('✓ Saved — reloading to apply new endpoint…').removeClass('error');
+                        setTimeout(() => window.location.reload(), 1200);
+                    } else {
+                        $status.text('✓ Saved').removeClass('error');
+                        setTimeout(() => $status.text(''), 3000);
+                    }
                 } else {
                     $status.text(res.data.message || 'Save failed.').addClass('error');
                 }
@@ -303,6 +310,43 @@
     $(document).on('change', '.ille-pg-model-card input[type="radio"]', function () {
         $('.ille-pg-model-card').removeClass('active');
         $(this).closest('.ille-pg-model-card').addClass('active');
+    });
+
+    // =========================================================================
+    // Test Endpoint
+    // =========================================================================
+
+    $('#ille-test-endpoint').on('click', function () {
+        const $btn    = $(this);
+        const $result = $('#ille-endpoint-test-result');
+        const $dot    = $('#ille-endpoint-status-dot');
+
+        $btn.prop('disabled', true).text('Testing…');
+        $result.text('').removeClass('ille-pg-hint--ok ille-pg-hint--err');
+
+        $.ajax({
+            url:    ILLE_PG.ajax_url,
+            method: 'POST',
+            data:   { action: 'ille_pg_test_endpoint', nonce: ILLE_PG.nonce },
+            success: function (res) {
+                if (res.success && res.data.active) {
+                    $dot.addClass('active').removeClass('inactive');
+                    $result.text('✓ Route registered and active: ' + res.data.route)
+                           .addClass('ille-pg-hint--ok');
+                    $('#ille-active-endpoint-url').text(res.data.endpoint_url);
+                } else {
+                    $dot.addClass('inactive').removeClass('active');
+                    $result.text('✗ Route not found. Save a slug change and wait for the page to reload.')
+                           .addClass('ille-pg-hint--err');
+                }
+            },
+            error: function () {
+                $result.text('Request failed.').addClass('ille-pg-hint--err');
+            },
+            complete: function () {
+                $btn.prop('disabled', false).text('Test');
+            }
+        });
     });
 
     // =========================================================================
