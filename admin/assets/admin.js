@@ -243,27 +243,60 @@
     }
 
     // =========================================================================
-    // Regenerate API key
+    // Per-user API key regeneration
     // =========================================================================
 
-    $('#ille-regenerate-key').on('click', function () {
-        const $warning = $('#ille-regen-warning');
-        if (!$warning.is(':hidden')) {
-            // Second click — confirm and regenerate
-            $.ajax({
-                url:    ILLE_PG.ajax_url,
-                method: 'POST',
-                data:   { action: 'ille_pg_regenerate_key', nonce: ILLE_PG.nonce },
-                success: function (res) {
-                    if (res.success) {
-                        $('#ille-api-key-display').val(res.data.api_key);
-                        $warning.attr('hidden', true);
-                    }
-                }
-            });
-        } else {
-            $warning.removeAttr('hidden');
+    $(document).on('click', '.ille-pg-regen-user-key', function () {
+        const $btn      = $(this);
+        const userId    = $btn.data('user-id');
+        const userName  = $btn.data('user-name');
+        const isRegen   = $btn.text().trim() === 'Regenerate';
+
+        if ( isRegen && !$btn.data('confirmed') ) {
+            $btn.data('confirmed', true).text('Confirm?').addClass('ille-pg-btn--warning');
+            setTimeout(() => {
+                $btn.data('confirmed', false).text('Regenerate').removeClass('ille-pg-btn--warning');
+            }, 3000);
+            return;
         }
+
+        $btn.prop('disabled', true).text('…');
+
+        $.ajax({
+            url:    ILLE_PG.ajax_url,
+            method: 'POST',
+            data:   { action: 'ille_pg_regenerate_key', nonce: ILLE_PG.nonce, user_id: userId },
+            success: function (res) {
+                if (res.success) {
+                    const inputId = 'ille-user-key-' + userId;
+                    let $input = $('#' + inputId);
+
+                    if ($input.length) {
+                        $input.val(res.data.api_key);
+                    } else {
+                        // First-time generation — replace "No key generated" span
+                        const $row = $btn.closest('.ille-pg-user-key-row__actions');
+                        $row.find('.ille-pg-hint').replaceWith(
+                            $('<input>').attr({
+                                type: 'text', id: inputId, readonly: true,
+                                class: 'ille-pg-input ille-pg-input--mono ille-pg-user-key-input',
+                                value: res.data.api_key
+                            })
+                        );
+                        $btn.before(
+                            $('<button>').attr({type: 'button'})
+                                .addClass('ille-pg-btn ille-pg-btn--sm ille-pg-copy-btn')
+                                .attr('data-copy-input', inputId)
+                                .text('Copy')
+                        );
+                    }
+                    $btn.data('confirmed', false).text('Regenerate').removeClass('ille-pg-btn--warning');
+                }
+            },
+            complete: function () {
+                $btn.prop('disabled', false);
+            }
+        });
     });
 
     // =========================================================================

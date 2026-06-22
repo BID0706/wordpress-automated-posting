@@ -30,17 +30,35 @@ class ILLE_PG_REST_API {
             }
         }
 
-        // 2. API key authentication (for external/cron callers)
-        $stored_key  = ILLE_PG_Settings::get_api_key();
-        $provided    = $request->get_header( 'X-API-Key' ) ?: $request->get_param( 'api_key' );
+        // 2. Per-user API key authentication
+        $provided = $request->get_header( 'X-API-Key' ) ?: $request->get_param( 'api_key' );
 
-        if ( empty( $stored_key ) ) {
-            return new WP_Error( 'not_configured', 'Endpoint API key is not configured.', [ 'status' => 503 ] );
-        }
-
-        if ( ! $provided || ! hash_equals( $stored_key, (string) $provided ) ) {
+        if ( ! $provided ) {
             return new WP_Error( 'unauthorized', 'Invalid or missing API key.', [ 'status' => 401 ] );
         }
+
+        $user = ILLE_PG_Settings::get_user_by_api_key( (string) $provided );
+
+        if ( ! $user ) {
+            return new WP_Error( 'unauthorized', 'Invalid API key.', [ 'status' => 401 ] );
+        }
+
+        // Verify user still has an allowed role
+        $allowed = false;
+        foreach ( ILLE_PG_Settings::get_allowed_roles() as $role ) {
+            if ( in_array( $role, (array) $user->roles, true ) ) {
+                $allowed = true;
+                break;
+            }
+        }
+
+        if ( ! $allowed ) {
+            return new WP_Error( 'forbidden', 'Your role is not permitted to use this endpoint.', [ 'status' => 403 ] );
+        }
+
+        // Store resolved user ID on the request for handle_request()
+        $request->set_param( '_ille_pg_user_id', $user->ID );
+        ILLE_PG_Settings::touch_api_key( $user->ID );
 
         return true;
     }
@@ -48,7 +66,12 @@ class ILLE_PG_REST_API {
     public function handle_request( WP_REST_Request $request ): WP_REST_Response|WP_Error {
         $allowed_params = ILLE_PG_Settings::get_allowed_params();
 
-        $args = [];
+        // Resolve author: browser session takes precedence, then API key user
+        $author_id = is_user_logged_in()
+            ? get_current_user_id()
+            : (int) $request->get_param( '_ille_pg_user_id' );
+
+        $args = [ 'author_id' => $author_id ];
 
         if ( in_array( 'topic', $allowed_params, true ) ) {
             $args['topic'] = sanitize_text_field( $request->get_param( 'topic' ) ?: '' );

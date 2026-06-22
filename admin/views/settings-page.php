@@ -1,7 +1,6 @@
 <?php
 if ( ! defined( 'ABSPATH' ) ) exit;
 
-$api_key      = ILLE_PG_Settings::get_api_key();
 $endpoint_url = ILLE_PG_Settings::get_endpoint_url();
 $schedules    = ILLE_PG_Settings::get_schedules();
 $next_runs    = ILLE_PG_Scheduler::get_next_runs();
@@ -144,31 +143,14 @@ while ( count( $schedules ) < ILLE_PG_Settings::MAX_SCHEDULES ) {
              TAB: AUTH & ROLES
         ================================================================ -->
         <div class="ille-pg-tab-panel" data-panel="auth">
-            <div class="ille-pg-card">
-                <div class="ille-pg-card__header"><h2>API Key</h2></div>
-
-                <div class="ille-pg-field">
-                    <label class="ille-pg-label">Endpoint Secret Key</label>
-                    <p class="ille-pg-hint">Pass as <code>X-API-Key</code> header or <code>?api_key=</code> parameter. Not required for logged-in users with an allowed role.</p>
-                    <div class="ille-pg-copy-row">
-                        <input type="text" id="ille-api-key-display" class="ille-pg-input ille-pg-input--mono"
-                               value="<?php echo esc_attr( $api_key ); ?>" readonly />
-                        <button type="button" class="ille-pg-btn ille-pg-btn--sm ille-pg-copy-btn" data-copy-input="ille-api-key-display">Copy</button>
-                        <button type="button" id="ille-regenerate-key" class="ille-pg-btn ille-pg-btn--sm ille-pg-btn--danger">Regenerate</button>
-                    </div>
-                    <p class="ille-pg-alert ille-pg-alert--warning" id="ille-regen-warning" hidden>
-                        Regenerating will invalidate the current key. Any cron jobs or external callers must be updated.
-                    </p>
-                </div>
-            </div>
 
             <div class="ille-pg-card">
                 <div class="ille-pg-card__header"><h2>Allowed Roles</h2></div>
-                <p class="ille-pg-hint">Users with these roles can use the admin UI and call the endpoint without an API key.</p>
+                <p class="ille-pg-hint">Users with these roles can access the admin UI and the REST endpoint. Each user gets their own API key for external access.</p>
 
                 <div class="ille-pg-checks">
                     <?php foreach ( $all_roles as $role_slug => $role_name ) :
-                        $checked = in_array( $role_slug, $saved_roles, true ) ? 'checked' : '';
+                        $checked  = in_array( $role_slug, $saved_roles, true ) ? 'checked' : '';
                         $disabled = ( $role_slug === 'administrator' ) ? 'disabled checked' : $checked;
                     ?>
                         <label class="ille-pg-check">
@@ -182,6 +164,92 @@ while ( count( $schedules ) < ILLE_PG_Settings::MAX_SCHEDULES ) {
                         </label>
                     <?php endforeach; ?>
                 </div>
+            </div>
+
+            <div class="ille-pg-card">
+                <div class="ille-pg-card__header">
+                    <h2>User API Keys</h2>
+                    <span class="ille-pg-badge">Per-user · Audit trail</span>
+                </div>
+
+                <?php
+                $is_admin      = current_user_can( 'manage_options' );
+                $current_uid   = get_current_user_id();
+
+                // Admins see all allowed users; others see only themselves
+                $allowed_users = $is_admin
+                    ? ILLE_PG_Settings::get_users_with_allowed_roles()
+                    : [ get_userdata( $current_uid ) ];
+
+                $allowed_users = array_filter( $allowed_users ); // remove false on get_userdata failure
+
+                if ( $is_admin ) : ?>
+                    <p class="ille-pg-hint">Manage API keys for all users with allowed roles. Posts created via each key are attributed to that user. Your own key is highlighted.</p>
+                <?php else : ?>
+                    <p class="ille-pg-hint">Your personal API key for external access to the endpoint. Posts created with this key will be attributed to you.</p>
+                <?php endif; ?>
+
+                <?php if ( empty( $allowed_users ) ) : ?>
+                    <p class="ille-pg-hint">No users found with the allowed roles.</p>
+                <?php else : ?>
+                    <div class="ille-pg-user-keys">
+                        <?php foreach ( $allowed_users as $u ) :
+                            $u_key      = ILLE_PG_Settings::get_user_api_key( $u->ID );
+                            $u_last     = get_user_meta( $u->ID, ILLE_PG_Settings::USER_META_API_KEY_LAST, true );
+                            $u_roles    = array_map( fn( $r ) => ucfirst( $r ), array_intersect( $u->roles, $saved_roles ) );
+                            $key_exists = ! empty( $u_key );
+                            $is_me      = ( $u->ID === $current_uid );
+                            // Non-admins can only manage their own key
+                            $can_manage = $is_admin || $is_me;
+                        ?>
+                            <div class="ille-pg-user-key-row <?php echo $is_me ? 'ille-pg-user-key-row--me' : ''; ?>">
+                                <div class="ille-pg-user-key-row__info">
+                                    <span class="ille-pg-user-key-row__avatar <?php echo $is_me ? 'ille-pg-user-key-row__avatar--me' : ''; ?>">
+                                        <?php echo esc_html( strtoupper( substr( $u->display_name, 0, 1 ) ) ); ?>
+                                    </span>
+                                    <div>
+                                        <strong>
+                                            <?php echo esc_html( $u->display_name ); ?>
+                                            <?php if ( $is_me ) : ?>
+                                                <span class="ille-pg-badge ille-pg-badge--ai">You</span>
+                                            <?php endif; ?>
+                                        </strong>
+                                        <span class="ille-pg-user-key-row__meta">
+                                            <?php echo esc_html( implode( ', ', $u_roles ) ); ?>
+                                            <?php if ( $u_last ) : ?>
+                                                · Last used: <?php echo esc_html( date( 'M j, Y g:i A', strtotime( $u_last ) ) ); ?>
+                                            <?php elseif ( $key_exists ) : ?>
+                                                · Never used
+                                            <?php endif; ?>
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="ille-pg-user-key-row__actions">
+                                    <?php if ( $key_exists ) : ?>
+                                        <input type="text"
+                                            id="ille-user-key-<?php echo esc_attr( $u->ID ); ?>"
+                                            class="ille-pg-input ille-pg-input--mono ille-pg-user-key-input"
+                                            value="<?php echo esc_attr( $u_key ); ?>"
+                                            readonly />
+                                        <button type="button"
+                                            class="ille-pg-btn ille-pg-btn--sm ille-pg-copy-btn"
+                                            data-copy-input="ille-user-key-<?php echo esc_attr( $u->ID ); ?>">Copy</button>
+                                    <?php else : ?>
+                                        <span class="ille-pg-hint">No key yet</span>
+                                    <?php endif; ?>
+                                    <?php if ( $can_manage ) : ?>
+                                        <button type="button"
+                                            class="ille-pg-btn ille-pg-btn--sm ille-pg-btn--danger ille-pg-regen-user-key"
+                                            data-user-id="<?php echo esc_attr( $u->ID ); ?>"
+                                            data-user-name="<?php echo esc_attr( $u->display_name ); ?>">
+                                            <?php echo $key_exists ? 'Regenerate' : 'Generate'; ?>
+                                        </button>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                <?php endif; ?>
             </div>
         </div>
 

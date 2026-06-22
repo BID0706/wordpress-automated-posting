@@ -106,6 +106,7 @@ class ILLE_PG_Admin {
             'featured_image' => filter_var( $_POST['featured_image'] ?? true, FILTER_VALIDATE_BOOLEAN ),
             'post_status'    => sanitize_key( $_POST['post_status'] ?? 'publish' ),
             'scheduled_date' => sanitize_text_field( $_POST['scheduled_date'] ?? '' ),
+            'author_id'      => get_current_user_id(),
         ];
 
         if ( ! in_array( $args['post_status'], [ 'publish', 'draft' ], true ) ) {
@@ -215,10 +216,17 @@ class ILLE_PG_Admin {
             wp_send_json_error( [ 'message' => 'Permission denied.' ], 403 );
         }
 
-        $new_key = wp_generate_password( 32, false );
-        update_option( ILLE_PG_Settings::KEY_API_KEY, $new_key );
+        $user_id = (int) ( $_POST['user_id'] ?? 0 );
+        if ( ! $user_id || ! get_userdata( $user_id ) ) {
+            wp_send_json_error( [ 'message' => 'Invalid user.' ], 400 );
+        }
 
-        wp_send_json_success( [ 'api_key' => $new_key ] );
+        $new_key = ILLE_PG_Settings::generate_user_api_key( $user_id );
+
+        wp_send_json_success( [
+            'api_key' => $new_key,
+            'user_id' => $user_id,
+        ] );
     }
 
     // -------------------------------------------------------------------------
