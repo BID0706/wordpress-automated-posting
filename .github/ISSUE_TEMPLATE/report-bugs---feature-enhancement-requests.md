@@ -1,5 +1,5 @@
 ---
-name: Custom issue template
+name: Report Bugs & Feature Enhancement requests
 about: Describe this issue template's purpose here.
 title: ''
 labels: bug, enhancement
