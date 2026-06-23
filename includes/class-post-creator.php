@@ -35,14 +35,10 @@ class ILLE_PG_Post_Creator {
             return $content_data;
         }
 
-        // Resolve featured image
-        $image_id = 0;
-        if ( $args['featured_image'] ) {
-            $image_id = ILLE_PG_AI_Generator::generate_image(
-                $content_data['image_prompt'] ?? $content_data['title'],
-                $content_data['focus_keyword'] ?? $content_data['title']
-            );
-        }
+        // Image prompt and alt text resolved before post creation so we can
+        // schedule async generation immediately after the post ID is available
+        $image_prompt   = $content_data['image_prompt']  ?? $content_data['title'];
+        $image_alt_text = $content_data['focus_keyword'] ?? $content_data['title'];
 
         // Resolve category
         $category_id = self::resolve_category( $content_data['category'] );
@@ -81,9 +77,9 @@ class ILLE_PG_Post_Creator {
             return $post_id;
         }
 
-        // Featured image
-        if ( $image_id > 0 ) {
-            set_post_thumbnail( $post_id, $image_id );
+        // Schedule async image generation (sets default immediately, real image when ready)
+        if ( $args['featured_image'] ) {
+            ILLE_PG_AI_Generator::schedule_image_async( $post_id, $image_prompt, $image_alt_text );
         }
 
         // Yoast SEO fields

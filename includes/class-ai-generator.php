@@ -203,30 +203,212 @@ Respond with ONLY a valid JSON object — no markdown, no code fences, no extra 
     }
 
     // -------------------------------------------------------------------------
-    // Image generation (Pollinations.ai)
+    // Async image generation
     // -------------------------------------------------------------------------
 
-    public static function generate_image( string $prompt, string $alt_text ): int {
+    /**
+     * Set the default placeholder immediately, then schedule a background job
+     * to generate and attach the real AI image once it's ready.
+     */
+    public static function schedule_image_async( int $post_id, string $prompt, string $alt_text ): void {
+        // Attach default image right away so the post is never imageless
+        $default = self::get_fallback_image_id();
+        if ( $default > 0 ) {
+            set_post_thumbnail( $post_id, $default );
+        }
+
+        // Schedule the real generation a few seconds later
+        wp_schedule_single_event(
+            time() + 5,
+            'ille_pg_image_async',
+            [ $post_id, $prompt, $alt_text ]
+        );
+    }
+
+    /**
+     * WP-Cron callback: generate the real image and update the post thumbnail.
+     * Called with args [$post_id, $prompt, $alt_text] from the cron hook.
+     */
+    public static function handle_async_image( int $post_id, string $prompt, string $alt_text ): void {
+        if ( ! get_post( $post_id ) ) {
+            return;
+        }
+
+        $attachment_id = self::generate_image_sync( $prompt, $alt_text );
+
+        if ( $attachment_id > 0 ) {
+            set_post_thumbnail( $post_id, $attachment_id );
+            ILLE_PG_Logger::log(
+                ILLE_PG_Logger::EVENT_POST_CREATED,
+                [
+                    'post_id'      => $post_id,
+                    'image_update' => 'async_complete',
+                    'attachment'   => $attachment_id,
+                ],
+                ILLE_PG_Logger::TRIGGER_CRON,
+                0
+            );
+        }
+    }
+
+    /**
+     * Synchronously generate an image using the configured image model.
+     * Returns attachment ID on success, 0 on failure.
+     */
+    public static function generate_image_sync( string $prompt, string $alt_text ): int {
         require_once ABSPATH . 'wp-admin/includes/media.php';
         require_once ABSPATH . 'wp-admin/includes/file.php';
         require_once ABSPATH . 'wp-admin/includes/image.php';
 
-        $url = 'https://image.pollinations.ai/prompt/' . urlencode( $prompt )
-             . '?width=1200&height=630&nologo=true&seed=' . wp_rand( 1, 99999 );
+        $model = ILLE_PG_Settings::resolve_image_model();
 
-        $attachment_id = media_sideload_image( $url, 0, $alt_text, 'id' );
+        $attachment_id = match ( $model['id'] ) {
+            'dall-e-3'      => self::generate_image_dalle( $model['key'], $prompt, $alt_text ),
+            'grok-aurora'   => self::generate_image_grok( $model['key'], $prompt, $alt_text ),
+            'gemini-imagen' => self::generate_image_gemini( $model['key'], $prompt, $alt_text ),
+            default         => self::generate_image_pollinations( $model['key'], $prompt, $alt_text ),
+        };
 
-        if ( ! is_wp_error( $attachment_id ) && $attachment_id > 0 ) {
+        if ( $attachment_id > 0 ) {
             return $attachment_id;
         }
 
-        // Fallback 1: admin-configured default image
-        $default = ILLE_PG_Settings::get_default_image_id();
-        if ( $default > 0 ) {
-            return $default;
+        // Primary model failed — try Pollinations as last resort (unless it was primary)
+        if ( $model['id'] !== 'pollinations' ) {
+            $poll_key = trim( (string) ILLE_PG_Settings::get( ILLE_PG_Settings::KEY_POLLINATIONS_KEY, '' ) );
+            $attachment_id = self::generate_image_pollinations( $poll_key, $prompt, $alt_text );
         }
 
-        // Fallback 2: most recent media library image
+        return $attachment_id > 0 ? $attachment_id : 0;
+    }
+
+    // -------------------------------------------------------------------------
+    // Image model implementations
+    // -------------------------------------------------------------------------
+
+    private static function generate_image_pollinations( string $key, string $prompt, string $alt_text ): int {
+        $url = 'https://image.pollinations.ai/prompt/' . rawurlencode( $prompt )
+             . '?width=1200&height=630&nologo=true&seed=' . wp_rand( 1, 99999 );
+
+        if ( $key ) {
+            $url .= '&token=' . rawurlencode( $key );
+        }
+
+        return self::download_and_sideload( $url, $alt_text, 60 );
+    }
+
+    private static function generate_image_dalle( string $key, string $prompt, string $alt_text ): int {
+        if ( ! $key ) return 0;
+
+        $response = wp_remote_post( 'https://api.openai.com/v1/images/generations', [
+            'timeout' => 60,
+            'headers' => [
+                'Authorization' => 'Bearer ' . $key,
+                'Content-Type'  => 'application/json',
+            ],
+            'body' => wp_json_encode( [
+                'model'           => 'dall-e-3',
+                'prompt'          => $prompt,
+                'n'               => 1,
+                'size'            => '1792x1024',
+                'response_format' => 'url',
+            ] ),
+        ] );
+
+        if ( is_wp_error( $response ) ) return 0;
+
+        $body = json_decode( wp_remote_retrieve_body( $response ), true );
+        $url  = $body['data'][0]['url'] ?? '';
+        if ( ! $url ) return 0;
+
+        return self::download_and_sideload( $url, $alt_text, 60 );
+    }
+
+    private static function generate_image_grok( string $key, string $prompt, string $alt_text ): int {
+        if ( ! $key ) return 0;
+
+        $response = wp_remote_post( 'https://api.x.ai/v1/images/generations', [
+            'timeout' => 60,
+            'headers' => [
+                'Authorization' => 'Bearer ' . $key,
+                'Content-Type'  => 'application/json',
+            ],
+            'body' => wp_json_encode( [
+                'model'  => 'grok-2-image-1212',
+                'prompt' => $prompt,
+                'n'      => 1,
+            ] ),
+        ] );
+
+        if ( is_wp_error( $response ) ) return 0;
+
+        $body = json_decode( wp_remote_retrieve_body( $response ), true );
+        $url  = $body['data'][0]['url'] ?? '';
+        if ( ! $url ) return 0;
+
+        return self::download_and_sideload( $url, $alt_text, 60 );
+    }
+
+    private static function generate_image_gemini( string $key, string $prompt, string $alt_text ): int {
+        if ( ! $key ) return 0;
+
+        $response = wp_remote_post(
+            'https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-001:predict?key=' . $key,
+            [
+                'timeout' => 60,
+                'headers' => [ 'Content-Type' => 'application/json' ],
+                'body'    => wp_json_encode( [
+                    'instances'  => [ [ 'prompt' => $prompt ] ],
+                    'parameters' => [ 'sampleCount' => 1, 'aspectRatio' => '16:9' ],
+                ] ),
+            ]
+        );
+
+        if ( is_wp_error( $response ) ) return 0;
+
+        $body   = json_decode( wp_remote_retrieve_body( $response ), true );
+        $b64    = $body['predictions'][0]['bytesBase64Encoded'] ?? '';
+        $mime   = $body['predictions'][0]['mimeType'] ?? 'image/png';
+        if ( ! $b64 ) return 0;
+
+        $ext     = ( $mime === 'image/jpeg' ) ? 'jpg' : 'png';
+        $tmpfile = tempnam( sys_get_temp_dir(), 'ille-pg-' );
+        file_put_contents( $tmpfile, base64_decode( $b64 ) );
+
+        $file_array = [
+            'name'     => 'ille-pg-image-' . time() . '.' . $ext,
+            'tmp_name' => $tmpfile,
+        ];
+
+        $attachment_id = media_handle_sideload( $file_array, 0, $alt_text );
+        @unlink( $tmpfile );
+
+        return ( ! is_wp_error( $attachment_id ) && $attachment_id > 0 ) ? $attachment_id : 0;
+    }
+
+    // -------------------------------------------------------------------------
+    // Shared helpers
+    // -------------------------------------------------------------------------
+
+    private static function download_and_sideload( string $url, string $alt_text, int $timeout = 30 ): int {
+        $tmp = download_url( $url, $timeout );
+        if ( is_wp_error( $tmp ) ) return 0;
+
+        $file_array = [
+            'name'     => 'ille-pg-image-' . time() . '.jpg',
+            'tmp_name' => $tmp,
+        ];
+
+        $attachment_id = media_handle_sideload( $file_array, 0, $alt_text );
+        @unlink( $tmp );
+
+        return ( ! is_wp_error( $attachment_id ) && $attachment_id > 0 ) ? $attachment_id : 0;
+    }
+
+    private static function get_fallback_image_id(): int {
+        $default = ILLE_PG_Settings::get_default_image_id();
+        if ( $default > 0 ) return $default;
+
         $images = get_posts( [
             'post_type'      => 'attachment',
             'post_mime_type' => 'image',

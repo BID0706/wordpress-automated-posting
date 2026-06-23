@@ -296,7 +296,7 @@ while ( count( $schedules ) < ILLE_PG_Settings::MAX_SCHEDULES ) {
                     <?php foreach ( $models as $model_id => $model ) :
                         $key_val = ILLE_PG_Settings::get( $model['key_opt'], '' );
                     ?>
-                        <div class="ille-pg-model-card <?php echo $active_model === $model_id ? 'active' : ''; ?>">
+                        <div class="ille-pg-model-card <?php echo $active_model === $model_id ? 'active' : ''; ?>" data-model-id="<?php echo esc_attr( $model_id ); ?>">
                             <label class="ille-pg-model-card__header">
                                 <input type="radio"
                                     name="settings[<?php echo esc_attr( ILLE_PG_Settings::KEY_ACTIVE_MODEL ); ?>]"
@@ -330,7 +330,7 @@ while ( count( $schedules ) < ILLE_PG_Settings::MAX_SCHEDULES ) {
                 if ( ! is_wp_error( $resolved ) ) :
                     $is_preferred = $resolved['id'] === $active_model;
                 ?>
-                <p class="ille-pg-hint" style="margin-top:12px">
+                <p class="ille-pg-hint" id="ille-active-model-indicator" style="margin-top:12px">
                     <?php if ( $is_preferred ) : ?>
                         <strong>Active model:</strong> <?php echo esc_html( $resolved['model']['label'] ); ?> (your preferred choice)
                     <?php else : ?>
@@ -339,10 +339,57 @@ while ( count( $schedules ) < ILLE_PG_Settings::MAX_SCHEDULES ) {
                     <?php endif; ?>
                 </p>
                 <?php else : ?>
-                <p class="ille-pg-hint" style="color:var(--ille-danger);margin-top:12px">
+                <p class="ille-pg-hint ille-pg-active-model--none" id="ille-active-model-indicator" style="color:var(--ille-danger);margin-top:12px">
                     ⚠ No API key configured. Post generation will fail until a key is added.
                 </p>
                 <?php endif; ?>
+            </div>
+
+            <?php
+            $image_models      = ILLE_PG_Settings::get_available_image_models();
+            $active_img_model  = ILLE_PG_Settings::get_image_model();
+            $pollinations_key  = ILLE_PG_Settings::get( ILLE_PG_Settings::KEY_POLLINATIONS_KEY, '' );
+            ?>
+            <div class="ille-pg-card" style="margin-top:16px">
+                <div class="ille-pg-card__header"><h2>Image Generation</h2></div>
+
+                <p class="ille-pg-hint">
+                    Images are generated <strong>asynchronously</strong> — the post is published immediately with the default placeholder image, and the AI-generated image replaces it in the background once it is ready.
+                </p>
+
+                <div class="ille-pg-field-row" style="margin-top:12px">
+                    <label class="ille-pg-label" for="ille-image-model">Preferred Image Model</label>
+                    <select class="ille-pg-input" id="ille-image-model"
+                            name="settings[<?php echo esc_attr( ILLE_PG_Settings::KEY_IMAGE_MODEL ); ?>]">
+                        <?php foreach ( $image_models as $model_id => $model_label ) : ?>
+                            <option value="<?php echo esc_attr( $model_id ); ?>"
+                                <?php selected( $active_img_model, $model_id ); ?>>
+                                <?php echo esc_html( $model_label ); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                    <p class="ille-pg-hint">
+                        <strong>Auto</strong> uses the same provider as your text model (e.g. Gemini text → Gemini Imagen). All other options use the API key already configured above, except Pollinations.ai which has its own optional key below.
+                    </p>
+                </div>
+
+                <div class="ille-pg-field-row" style="margin-top:16px">
+                    <label class="ille-pg-label" for="ille-pollinations-key">
+                        Pollinations.ai API Key
+                        <span class="ille-pg-badge ille-pg-badge--green" style="margin-left:6px">Optional</span>
+                    </label>
+                    <input type="password"
+                        class="ille-pg-input"
+                        id="ille-pollinations-key"
+                        name="settings[<?php echo esc_attr( ILLE_PG_Settings::KEY_POLLINATIONS_KEY ); ?>]"
+                        value="<?php echo esc_attr( $pollinations_key ); ?>"
+                        placeholder="Leave blank to use free tier"
+                        autocomplete="off" />
+                    <p class="ille-pg-hint">
+                        Free tier works without a key. An API key unlocks higher rate limits and priority generation.
+                        <a href="https://pollinations.ai" target="_blank">Get key →</a>
+                    </p>
+                </div>
             </div>
         </div>
 

@@ -6,15 +6,28 @@
     // Tab navigation
     // =========================================================================
 
-    $(document).on('click', '.ille-pg-tab', function () {
-        const target = $(this).data('tab');
-
+    function activateTab( target ) {
         $('.ille-pg-tab').removeClass('active');
-        $(this).addClass('active');
-
+        $('[data-tab="' + target + '"]').addClass('active');
         $('.ille-pg-tab-panel').removeClass('active');
         $('[data-panel="' + target + '"]').addClass('active');
+    }
+
+    $(document).on('click', '.ille-pg-tab', function () {
+        const target = $(this).data('tab');
+        activateTab( target );
+        try { localStorage.setItem('ille_pg_tab', target); } catch(e) {}
     });
+
+    // Restore last active tab on page load
+    (function () {
+        try {
+            const saved = localStorage.getItem('ille_pg_tab');
+            if ( saved && $('[data-tab="' + saved + '"]').length ) {
+                activateTab( saved );
+            }
+        } catch(e) {}
+    })();
 
     // =========================================================================
     // Generate Post form
@@ -154,6 +167,7 @@
                     } else {
                         $status.text('✓ Saved').removeClass('error');
                         setTimeout(() => $status.text(''), 3000);
+                        updateActiveModelIndicator();
                     }
                 } else {
                     $status.text(res.data.message || 'Save failed.').addClass('error');
@@ -174,8 +188,8 @@
         const data = {};
         const $form = $('#ille-pg-settings-form');
 
-        // Text/textarea/select/radio inputs
-        $form.find('input[type="text"], input[type="password"], input[type="time"], textarea, select').each(function () {
+        // Text/textarea/select/hidden inputs
+        $form.find('input[type="text"], input[type="password"], input[type="time"], input[type="hidden"], textarea, select').each(function () {
             const name = $(this).attr('name');
             if (!name) return;
             setNestedValue(data, name, $(this).val());
@@ -338,6 +352,69 @@
         const val = $(this).val().trim().replace(/^\/|\/$/g, '') || 'generate-post';
         $('#ille-slug-preview').text(val);
     });
+
+    // =========================================================================
+    // Active model indicator — update client-side after save
+    // =========================================================================
+
+    function updateActiveModelIndicator() {
+        const $indicator = $('#ille-active-model-indicator');
+        if ( !$indicator.length ) return;
+
+        // Determine which model has a key set and is selected (preferred)
+        let preferredId = $('input[name="settings[ille_pg_active_model]"]:checked').val();
+        const modelKeys = {
+            'gemini-2.0-flash': $('input[name="settings[ille_pg_gemini_key]"]').val().trim(),
+            'gpt-4o-mini':      $('input[name="settings[ille_pg_openai_key]"]').val().trim(),
+            'grok-3-mini':      $('input[name="settings[ille_pg_xai_key]"]').val().trim(),
+        };
+        const modelNames = {
+            'gemini-2.0-flash': 'Gemini 2.0 Flash',
+            'gpt-4o-mini':      'GPT-4o Mini',
+            'grok-3-mini':      'Grok 3 Mini',
+        };
+        const fallbackOrder = [ 'gemini-2.0-flash', 'gpt-4o-mini', 'grok-3-mini' ];
+
+        // Try preferred first, then fallback order
+        let resolved = null;
+        if ( preferredId && modelKeys[ preferredId ] ) {
+            resolved = preferredId;
+        } else {
+            for ( const id of fallbackOrder ) {
+                if ( modelKeys[ id ] ) { resolved = id; break; }
+            }
+        }
+
+        if ( resolved ) {
+            const isFallback = resolved !== preferredId;
+            $indicator
+                .removeClass('ille-pg-active-model--none')
+                .html(
+                    ( isFallback ? '<em>Fallback: </em>' : '' ) +
+                    '<strong>' + ( modelNames[ resolved ] || resolved ) + '</strong>' +
+                    ( isFallback ? ' (preferred has no key)' : '' )
+                );
+        } else {
+            $indicator
+                .addClass('ille-pg-active-model--none')
+                .html('<strong>None — add a key to enable generation</strong>');
+        }
+
+        // Refresh key badges
+        Object.keys( modelKeys ).forEach(function ( id ) {
+            const $card = $('[data-model-id="' + id + '"]');
+            if ( !$card.length ) return;
+            const hasKey = !!modelKeys[ id ];
+            $card.find('.ille-pg-key-badge')
+                .toggleClass('ille-pg-key-badge--set', hasKey)
+                .toggleClass('ille-pg-key-badge--missing', !hasKey)
+                .text( hasKey ? 'Key set ✓' : 'No key' );
+        });
+    }
+
+    // Also update indicator when radio or key inputs change
+    $(document).on('change', 'input[name="settings[ille_pg_active_model]"]', updateActiveModelIndicator);
+    $(document).on('input', 'input[name="settings[ille_pg_gemini_key]"], input[name="settings[ille_pg_openai_key]"], input[name="settings[ille_pg_xai_key]"]', updateActiveModelIndicator);
 
     // =========================================================================
     // Model card radio — update active class

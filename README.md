@@ -115,8 +115,9 @@ ille-post-generator-v2/
 |-------|--------|-------------|
 | **Phase 1** | ✅ Complete | Plugin structure, admin UI, REST endpoint, scheduler — dummy content |
 | **Phase 2** | ✅ Complete | AI content generation (Gemini / GPT-4o Mini / Grok), image generation (Pollinations.ai), full Yoast SEO optimisation |
+| **Phase 2.1** | ✅ Complete | Async image generation, multi-model image support (Pollinations / DALL·E 3 / Grok Aurora / Gemini Imagen), Pollinations API key, image model selector |
 
-### AI Models
+### Text AI Models
 
 | Model | Provider | Tier | Notes |
 |-------|----------|------|-------|
@@ -125,6 +126,17 @@ ille-post-generator-v2/
 | Grok 3 Mini | xAI | Free credits | [Get key](https://console.x.ai/) |
 
 **Model resolution**: The model selected in Settings → AI Models is used if its API key is configured. If not, the plugin falls back to the first model that has a key. An error is returned if no model has a key.
+
+### Image AI Models
+
+| Model | Provider | Key required | Notes |
+|-------|----------|-------------|-------|
+| Pollinations.ai | Pollinations | Optional | Free tier, no key needed. API key unlocks higher limits. |
+| DALL·E 3 | OpenAI | OpenAI key | High-quality, 1792×1024. Uses existing OpenAI API key. |
+| Grok Aurora | xAI | xAI key | Uses `grok-2-image-1212`. Uses existing xAI API key. |
+| Gemini Imagen | Google | Gemini key | Uses `imagen-3.0-generate-001`. Uses existing Gemini API key. |
+
+**Async image generation**: The post is published immediately with the configured default placeholder image. The AI image is generated in the background via WP-Cron and automatically replaces the placeholder once ready. If image generation fails entirely, the placeholder remains. If no placeholder is configured, the most recent media library image is used.
 
 ---
 

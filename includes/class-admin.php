@@ -151,7 +151,9 @@ class ILLE_PG_Admin {
             ILLE_PG_Settings::KEY_GEMINI_KEY,
             ILLE_PG_Settings::KEY_OPENAI_KEY,
             ILLE_PG_Settings::KEY_XAI_KEY,
+            ILLE_PG_Settings::KEY_POLLINATIONS_KEY,
             ILLE_PG_Settings::KEY_ACTIVE_MODEL,
+            ILLE_PG_Settings::KEY_IMAGE_MODEL,
             ILLE_PG_Settings::KEY_CUSTOM_ENDPOINT,
         ];
 
