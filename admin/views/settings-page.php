@@ -267,6 +267,31 @@ while ( count( $schedules ) < ILLE_PG_Settings::MAX_SCHEDULES ) {
             <div class="ille-pg-card">
                 <div class="ille-pg-card__header"><h2>Language Model</h2></div>
 
+                <div class="ille-pg-model-guide">
+                    <p>Select your <strong>preferred model</strong> and add its API key below. At generation time, the selected model is used — if its key is missing, the plugin automatically falls back to the next model that has a key configured.</p>
+                    <div class="ille-pg-model-guide__tips">
+                        <div class="ille-pg-model-guide__tip">
+                            <span class="ille-pg-model-guide__icon">⚡</span>
+                            <div>
+                                <strong>Gemini 2.0 Flash</strong> — Best starting point. Free tier with 1,500 requests/day. Fast and good quality for blog posts.
+                            </div>
+                        </div>
+                        <div class="ille-pg-model-guide__tip">
+                            <span class="ille-pg-model-guide__icon">✍️</span>
+                            <div>
+                                <strong>GPT-4o Mini</strong> — Paid but very affordable. Excellent writing quality and instruction following.
+                            </div>
+                        </div>
+                        <div class="ille-pg-model-guide__tip">
+                            <span class="ille-pg-model-guide__icon">🆓</span>
+                            <div>
+                                <strong>Grok 3 Mini</strong> — Free credits included. Good alternative if Gemini quota is exhausted.
+                            </div>
+                        </div>
+                    </div>
+                    <p class="ille-pg-hint">💡 Tip: Add keys for multiple models so the plugin can fall back automatically if your preferred model's quota is reached or its key expires.</p>
+                </div>
+
                 <div class="ille-pg-models">
                     <?php foreach ( $models as $model_id => $model ) :
                         $key_val = ILLE_PG_Settings::get( $model['key_opt'], '' );

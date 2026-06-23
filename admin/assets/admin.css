@@ -1098,3 +1098,37 @@
     color: var(--ille-text-muted);
     font-size: 13px;
 }
+
+/* ============================================================================
+   AI Models — selection guide
+   ============================================================================ */
+
+.ille-pg-model-guide {
+    background: var(--ille-accent-light);
+    border: 1px solid #c7d2fe;
+    border-radius: 8px;
+    padding: 14px 16px;
+    margin-bottom: 20px;
+    font-size: 13px;
+}
+
+.ille-pg-model-guide > p { margin: 0 0 12px; }
+
+.ille-pg-model-guide__tips {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.ille-pg-model-guide__tip {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+}
+
+.ille-pg-model-guide__icon {
+    font-size: 16px;
+    line-height: 1.4;
+    flex-shrink: 0;
+}
