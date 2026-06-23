@@ -6,15 +6,28 @@
     // Tab navigation
     // =========================================================================
 
-    $(document).on('click', '.ille-pg-tab', function () {
-        const target = $(this).data('tab');
-
+    function activateTab( target ) {
         $('.ille-pg-tab').removeClass('active');
-        $(this).addClass('active');
-
+        $('[data-tab="' + target + '"]').addClass('active');
         $('.ille-pg-tab-panel').removeClass('active');
         $('[data-panel="' + target + '"]').addClass('active');
+    }
+
+    $(document).on('click', '.ille-pg-tab', function () {
+        const target = $(this).data('tab');
+        activateTab( target );
+        try { localStorage.setItem('ille_pg_tab', target); } catch(e) {}
     });
+
+    // Restore last active tab on page load
+    (function () {
+        try {
+            const saved = localStorage.getItem('ille_pg_tab');
+            if ( saved && $('[data-tab="' + saved + '"]').length ) {
+                activateTab( saved );
+            }
+        } catch(e) {}
+    })();
 
     // =========================================================================
     // Generate Post form
@@ -154,6 +167,7 @@
                     } else {
                         $status.text('✓ Saved').removeClass('error');
                         setTimeout(() => $status.text(''), 3000);
+                        updateActiveModelIndicator();
                     }
                 } else {
                     $status.text(res.data.message || 'Save failed.').addClass('error');
@@ -174,8 +188,8 @@
         const data = {};
         const $form = $('#ille-pg-settings-form');
 
-        // Text/textarea/select/radio inputs
-        $form.find('input[type="text"], input[type="password"], input[type="time"], textarea, select').each(function () {
+        // Text/textarea/select/hidden inputs
+        $form.find('input[type="text"], input[type="password"], input[type="time"], input[type="hidden"], textarea, select').each(function () {
             const name = $(this).attr('name');
             if (!name) return;
             setNestedValue(data, name, $(this).val());
@@ -340,6 +354,70 @@
     });
 
     // =========================================================================
+    // Active model indicator — update client-side after save
+    // =========================================================================
+
+    function updateActiveModelIndicator() {
+        const $indicator = $('#ille-active-model-indicator');
+        if ( !$indicator.length ) return;
+
+        // Determine which model has a key set and is selected (preferred)
+        let preferredId = $('input[name="settings[ille_pg_active_model]"]:checked').val();
+        const v = name => ( $('input[name="settings[' + name + ']"]').val() || '' ).trim();
+        const modelKeys = {
+            'gemini-2.0-flash': v( 'ille_pg_gemini_api_key' ),
+            'gpt-4o-mini':      v( 'ille_pg_openai_api_key' ),
+            'grok-3-mini':      v( 'ille_pg_xai_api_key' ),
+        };
+        const modelNames = {
+            'gemini-2.0-flash': 'Gemini 2.0 Flash',
+            'gpt-4o-mini':      'GPT-4o Mini',
+            'grok-3-mini':      'Grok 3 Mini',
+        };
+        const fallbackOrder = [ 'gemini-2.0-flash', 'gpt-4o-mini', 'grok-3-mini' ];
+
+        // Try preferred first, then fallback order
+        let resolved = null;
+        if ( preferredId && modelKeys[ preferredId ] ) {
+            resolved = preferredId;
+        } else {
+            for ( const id of fallbackOrder ) {
+                if ( modelKeys[ id ] ) { resolved = id; break; }
+            }
+        }
+
+        if ( resolved ) {
+            const isFallback = resolved !== preferredId;
+            $indicator
+                .removeClass('ille-pg-active-model--none')
+                .html(
+                    ( isFallback ? '<em>Fallback: </em>' : '' ) +
+                    '<strong>' + ( modelNames[ resolved ] || resolved ) + '</strong>' +
+                    ( isFallback ? ' (preferred has no key)' : '' )
+                );
+        } else {
+            $indicator
+                .addClass('ille-pg-active-model--none')
+                .html('<strong>None — add a key to enable generation</strong>');
+        }
+
+        // Refresh key badges
+        Object.keys( modelKeys ).forEach(function ( id ) {
+            const $card = $('[data-model-id="' + id + '"]');
+            if ( !$card.length ) return;
+            const hasKey = !!modelKeys[ id ];
+            $card.find('.ille-pg-key-badge')
+                .toggleClass('ille-pg-key-badge--set', hasKey)
+                .toggleClass('ille-pg-key-badge--missing', !hasKey)
+                .text( hasKey ? 'Key set ✓' : 'No key' );
+        });
+    }
+
+    // Also update indicator when radio or key inputs change
+    $(document).on('change', 'input[name="settings[ille_pg_active_model]"]', updateActiveModelIndicator);
+    $(document).on('input', 'input[name="settings[ille_pg_gemini_key]"], input[name="settings[ille_pg_openai_key]"], input[name="settings[ille_pg_xai_key]"]', updateActiveModelIndicator);
+
+    // =========================================================================
     // Model card radio — update active class
     // =========================================================================
 
@@ -494,5 +572,60 @@
         const defValue = $btn.data('default');
         $('[name="settings[' + target + ']"]').val(defValue);
     });
+
+    // =========================================================================
+    // Default placeholder image — WordPress media library
+    // =========================================================================
+
+    let mediaFrame;
+
+    $('#ille-default-image-select').on('click', function (e) {
+        e.preventDefault();
+
+        if (mediaFrame) { mediaFrame.open(); return; }
+
+        mediaFrame = wp.media({
+            title:    'Select Default Placeholder Image',
+            button:   { text: 'Use this image' },
+            multiple: false,
+            library:  { type: 'image' },
+        });
+
+        mediaFrame.on('select', function () {
+            const attachment = mediaFrame.state().get('selection').first().toJSON();
+            $('#ille-default-image-id').val(attachment.id);
+
+            const src = attachment.sizes && attachment.sizes.medium
+                ? attachment.sizes.medium.url
+                : attachment.url;
+
+            const $preview = $('#ille-default-image-preview');
+            $preview.removeClass('ille-pg-default-image-preview--empty')
+                    .html('<img src="' + src + '" alt="Default placeholder" />');
+
+            $('#ille-default-image-select').text('Change Image');
+
+            if (!$('#ille-default-image-remove').length) {
+                $('#ille-default-image-select').after(
+                    '<button type="button" id="ille-default-image-remove" class="ille-pg-btn ille-pg-btn--sm ille-pg-btn--ghost">Remove</button>'
+                );
+                bindRemove();
+            }
+        });
+
+        mediaFrame.open();
+    });
+
+    function bindRemove() {
+        $(document).on('click', '#ille-default-image-remove', function () {
+            $('#ille-default-image-id').val('');
+            $('#ille-default-image-preview')
+                .addClass('ille-pg-default-image-preview--empty')
+                .html('<span>No image selected</span>');
+            $('#ille-default-image-select').text('Select Image');
+            $(this).remove();
+        });
+    }
+    bindRemove();
 
 })(jQuery);

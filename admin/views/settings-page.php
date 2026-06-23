@@ -267,11 +267,36 @@ while ( count( $schedules ) < ILLE_PG_Settings::MAX_SCHEDULES ) {
             <div class="ille-pg-card">
                 <div class="ille-pg-card__header"><h2>Language Model</h2></div>
 
+                <div class="ille-pg-model-guide">
+                    <p>Select your <strong>preferred model</strong> and add its API key below. At generation time, the selected model is used — if its key is missing, the plugin automatically falls back to the next model that has a key configured.</p>
+                    <div class="ille-pg-model-guide__tips">
+                        <div class="ille-pg-model-guide__tip">
+                            <span class="ille-pg-model-guide__icon">⚡</span>
+                            <div>
+                                <strong>Gemini 2.0 Flash</strong> — Best starting point. Free tier with 1,500 requests/day. Fast and good quality for blog posts.
+                            </div>
+                        </div>
+                        <div class="ille-pg-model-guide__tip">
+                            <span class="ille-pg-model-guide__icon">✍️</span>
+                            <div>
+                                <strong>GPT-4o Mini</strong> — Paid but very affordable. Excellent writing quality and instruction following.
+                            </div>
+                        </div>
+                        <div class="ille-pg-model-guide__tip">
+                            <span class="ille-pg-model-guide__icon">🆓</span>
+                            <div>
+                                <strong>Grok 3 Mini</strong> — Free credits included. Good alternative if Gemini quota is exhausted.
+                            </div>
+                        </div>
+                    </div>
+                    <p class="ille-pg-hint">💡 Tip: Add keys for multiple models so the plugin can fall back automatically if your preferred model's quota is reached or its key expires.</p>
+                </div>
+
                 <div class="ille-pg-models">
                     <?php foreach ( $models as $model_id => $model ) :
                         $key_val = ILLE_PG_Settings::get( $model['key_opt'], '' );
                     ?>
-                        <div class="ille-pg-model-card <?php echo $active_model === $model_id ? 'active' : ''; ?>">
+                        <div class="ille-pg-model-card <?php echo $active_model === $model_id ? 'active' : ''; ?>" data-model-id="<?php echo esc_attr( $model_id ); ?>">
                             <label class="ille-pg-model-card__header">
                                 <input type="radio"
                                     name="settings[<?php echo esc_attr( ILLE_PG_Settings::KEY_ACTIVE_MODEL ); ?>]"
@@ -283,6 +308,11 @@ while ( count( $schedules ) < ILLE_PG_Settings::MAX_SCHEDULES ) {
                                 <?php else : ?>
                                     <span class="ille-pg-badge ille-pg-badge--orange">Paid</span>
                                 <?php endif; ?>
+                                <?php if ( $key_val ) : ?>
+                                    <span class="ille-pg-key-badge ille-pg-key-badge--set">Key set ✓</span>
+                                <?php else : ?>
+                                    <span class="ille-pg-key-badge ille-pg-key-badge--missing">No key</span>
+                                <?php endif; ?>
                             </label>
                             <p class="ille-pg-hint"><?php echo wp_kses( $model['note'], [ 'a' => [ 'href' => [], 'target' => [] ] ] ); ?></p>
                             <input type="password"
@@ -293,6 +323,72 @@ while ( count( $schedules ) < ILLE_PG_Settings::MAX_SCHEDULES ) {
                                 autocomplete="off" />
                         </div>
                     <?php endforeach; ?>
+                </div>
+
+                <?php
+                $resolved = ILLE_PG_Settings::resolve_active_model();
+                if ( ! is_wp_error( $resolved ) ) :
+                    $is_preferred = $resolved['id'] === $active_model;
+                ?>
+                <p class="ille-pg-hint" id="ille-active-model-indicator" style="margin-top:12px">
+                    <?php if ( $is_preferred ) : ?>
+                        <strong>Active model:</strong> <?php echo esc_html( $resolved['model']['label'] ); ?> (your preferred choice)
+                    <?php else : ?>
+                        <strong>Active model:</strong> <?php echo esc_html( $resolved['model']['label'] ); ?>
+                        <span style="color:var(--ille-warning)"> — preferred model has no key; using first available.</span>
+                    <?php endif; ?>
+                </p>
+                <?php else : ?>
+                <p class="ille-pg-hint ille-pg-active-model--none" id="ille-active-model-indicator" style="color:var(--ille-danger);margin-top:12px">
+                    ⚠ No API key configured. Post generation will fail until a key is added.
+                </p>
+                <?php endif; ?>
+            </div>
+
+            <?php
+            $image_models      = ILLE_PG_Settings::get_available_image_models();
+            $active_img_model  = ILLE_PG_Settings::get_image_model();
+            $pollinations_key  = ILLE_PG_Settings::get( ILLE_PG_Settings::KEY_POLLINATIONS_KEY, '' );
+            ?>
+            <div class="ille-pg-card" style="margin-top:16px">
+                <div class="ille-pg-card__header"><h2>Image Generation</h2></div>
+
+                <p class="ille-pg-hint">
+                    Images are generated <strong>asynchronously</strong> — the post is published immediately with the default placeholder image, and the AI-generated image replaces it in the background once it is ready.
+                </p>
+
+                <div class="ille-pg-field-row" style="margin-top:12px">
+                    <label class="ille-pg-label" for="ille-image-model">Preferred Image Model</label>
+                    <select class="ille-pg-input" id="ille-image-model"
+                            name="settings[<?php echo esc_attr( ILLE_PG_Settings::KEY_IMAGE_MODEL ); ?>]">
+                        <?php foreach ( $image_models as $model_id => $model_label ) : ?>
+                            <option value="<?php echo esc_attr( $model_id ); ?>"
+                                <?php selected( $active_img_model, $model_id ); ?>>
+                                <?php echo esc_html( $model_label ); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                    <p class="ille-pg-hint">
+                        <strong>Auto</strong> uses the same provider as your text model (e.g. Gemini text → Gemini Imagen). All other options use the API key already configured above, except Pollinations.ai which has its own optional key below.
+                    </p>
+                </div>
+
+                <div class="ille-pg-field-row" style="margin-top:16px">
+                    <label class="ille-pg-label" for="ille-pollinations-key">
+                        Pollinations.ai API Key
+                        <span class="ille-pg-badge ille-pg-badge--green" style="margin-left:6px">Optional</span>
+                    </label>
+                    <input type="password"
+                        class="ille-pg-input"
+                        id="ille-pollinations-key"
+                        name="settings[<?php echo esc_attr( ILLE_PG_Settings::KEY_POLLINATIONS_KEY ); ?>]"
+                        value="<?php echo esc_attr( $pollinations_key ); ?>"
+                        placeholder="Leave blank to use free tier"
+                        autocomplete="off" />
+                    <p class="ille-pg-hint">
+                        Free tier works without a key. An API key unlocks higher rate limits and priority generation.
+                        <a href="https://pollinations.ai" target="_blank">Get key →</a>
+                    </p>
                 </div>
             </div>
         </div>
@@ -329,6 +425,42 @@ while ( count( $schedules ) < ILLE_PG_Settings::MAX_SCHEDULES ) {
                         data-default="<?php echo esc_attr( ILLE_PG_Settings::default_image_prompt() ); ?>">
                     Reset to default
                 </button>
+            </div>
+
+            <div class="ille-pg-card">
+                <div class="ille-pg-card__header"><h2>Default Placeholder Image</h2></div>
+                <p class="ille-pg-hint">Used as the featured image when AI image generation fails. If not set, the most recent media library image is used instead.</p>
+
+                <?php
+                $default_img_id  = ILLE_PG_Settings::get_default_image_id();
+                $default_img_src = $default_img_id ? wp_get_attachment_image_src( $default_img_id, 'medium' ) : null;
+                ?>
+
+                <div class="ille-pg-default-image-wrap">
+                    <input type="hidden"
+                        id="ille-default-image-id"
+                        name="settings[<?php echo esc_attr( ILLE_PG_Settings::KEY_DEFAULT_IMAGE ); ?>]"
+                        value="<?php echo esc_attr( $default_img_id ); ?>" />
+
+                    <?php if ( $default_img_src ) : ?>
+                        <div class="ille-pg-default-image-preview" id="ille-default-image-preview">
+                            <img src="<?php echo esc_url( $default_img_src[0] ); ?>" alt="Default placeholder" />
+                        </div>
+                    <?php else : ?>
+                        <div class="ille-pg-default-image-preview ille-pg-default-image-preview--empty" id="ille-default-image-preview">
+                            <span>No image selected</span>
+                        </div>
+                    <?php endif; ?>
+
+                    <div style="display:flex;gap:8px;margin-top:10px">
+                        <button type="button" id="ille-default-image-select" class="ille-pg-btn ille-pg-btn--sm">
+                            <?php echo $default_img_id ? 'Change Image' : 'Select Image'; ?>
+                        </button>
+                        <?php if ( $default_img_id ) : ?>
+                            <button type="button" id="ille-default-image-remove" class="ille-pg-btn ille-pg-btn--sm ille-pg-btn--ghost">Remove</button>
+                        <?php endif; ?>
+                    </div>
+                </div>
             </div>
         </div>
 

@@ -11,13 +11,14 @@
 
 if ( ! defined( 'ABSPATH' ) ) exit;
 
-define( 'ILLE_PG_VERSION',  '1.0.1' );
+define( 'ILLE_PG_VERSION',  '1.1.0' );
 define( 'ILLE_PG_DIR',      plugin_dir_path( __FILE__ ) );
 define( 'ILLE_PG_URL',      plugin_dir_url( __FILE__ ) );
 define( 'ILLE_PG_BASENAME', plugin_basename( __FILE__ ) );
 
 require_once ILLE_PG_DIR . 'includes/class-settings.php';
 require_once ILLE_PG_DIR . 'includes/class-logger.php';
+require_once ILLE_PG_DIR . 'includes/class-ai-generator.php';
 require_once ILLE_PG_DIR . 'includes/class-post-creator.php';
 require_once ILLE_PG_DIR . 'includes/class-scheduler.php';
 require_once ILLE_PG_DIR . 'includes/class-rest-api.php';
@@ -31,6 +32,9 @@ function ille_pg_init() {
     }
 }
 add_action( 'plugins_loaded', 'ille_pg_init' );
+
+// Async image generation cron callback
+add_action( 'ille_pg_image_async', [ 'ILLE_PG_AI_Generator', 'handle_async_image' ], 10, 3 );
 
 register_activation_hook( __FILE__, 'ille_pg_activate' );
 function ille_pg_activate() {

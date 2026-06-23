@@ -598,7 +598,24 @@
     margin-bottom: 6px;
 }
 
-.ille-pg-model-card__header input[type="radio"] { display: none; }
+.ille-pg-model-card__header input[type="radio"] {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 16px;
+    height: 16px;
+    border: 2px solid var(--ille-border);
+    border-radius: 50%;
+    flex-shrink: 0;
+    cursor: pointer;
+    transition: border-color .15s, background .15s;
+    position: relative;
+}
+
+.ille-pg-model-card__header input[type="radio"]:checked {
+    border-color: var(--ille-accent);
+    background: var(--ille-accent);
+    box-shadow: inset 0 0 0 3px #fff;
+}
 
 .ille-pg-model-card__name { font-size: 14px; font-weight: 600; flex: 1; }
 
@@ -1024,4 +1041,94 @@
 .ille-pg-log-header-actions .ille-pg-icon-btn--danger {
     color: var(--ille-text-muted);
     border-color: var(--ille-border);
+}
+
+/* ============================================================================
+   AI Models tab — key status badges
+   ============================================================================ */
+
+.ille-pg-key-badge {
+    display: inline-block;
+    padding: 2px 7px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .02em;
+    margin-left: auto;
+}
+
+.ille-pg-key-badge--set {
+    background: var(--ille-success-bg);
+    color: #065f46;
+}
+
+.ille-pg-key-badge--missing {
+    background: var(--ille-warning-bg);
+    color: #92400e;
+}
+
+/* ============================================================================
+   Prompts tab — default placeholder image
+   ============================================================================ */
+
+.ille-pg-default-image-wrap {
+    padding-top: 4px;
+}
+
+.ille-pg-default-image-preview {
+    width: 240px;
+    height: 126px;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid var(--ille-border);
+    background: var(--ille-bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.ille-pg-default-image-preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.ille-pg-default-image-preview--empty {
+    color: var(--ille-text-muted);
+    font-size: 13px;
+}
+
+/* ============================================================================
+   AI Models — selection guide
+   ============================================================================ */
+
+.ille-pg-model-guide {
+    background: var(--ille-accent-light);
+    border: 1px solid #c7d2fe;
+    border-radius: 8px;
+    padding: 14px 16px;
+    margin-bottom: 20px;
+    font-size: 13px;
+}
+
+.ille-pg-model-guide > p { margin: 0 0 12px; }
+
+.ille-pg-model-guide__tips {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.ille-pg-model-guide__tip {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+}
+
+.ille-pg-model-guide__icon {
+    font-size: 16px;
+    line-height: 1.4;
+    flex-shrink: 0;
 }
