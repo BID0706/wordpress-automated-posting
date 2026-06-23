@@ -363,10 +363,11 @@
 
         // Determine which model has a key set and is selected (preferred)
         let preferredId = $('input[name="settings[ille_pg_active_model]"]:checked').val();
+        const v = name => ( $('input[name="settings[' + name + ']"]').val() || '' ).trim();
         const modelKeys = {
-            'gemini-2.0-flash': $('input[name="settings[ille_pg_gemini_key]"]').val().trim(),
-            'gpt-4o-mini':      $('input[name="settings[ille_pg_openai_key]"]').val().trim(),
-            'grok-3-mini':      $('input[name="settings[ille_pg_xai_key]"]').val().trim(),
+            'gemini-2.0-flash': v( 'ille_pg_gemini_api_key' ),
+            'gpt-4o-mini':      v( 'ille_pg_openai_api_key' ),
+            'grok-3-mini':      v( 'ille_pg_xai_api_key' ),
         };
         const modelNames = {
             'gemini-2.0-flash': 'Gemini 2.0 Flash',
