@@ -14,6 +14,7 @@ class ILLE_PG_Settings {
     const KEY_CUSTOM_ENDPOINT  = 'ille_pg_custom_endpoint';
     const KEY_ALLOWED_PARAMS   = 'ille_pg_allowed_params';
     const KEY_SCHEDULES        = 'ille_pg_schedules';
+    const KEY_DEFAULT_IMAGE    = 'ille_pg_default_image';
 
     const MAX_SCHEDULES = 5;
 
@@ -114,6 +115,35 @@ class ILLE_PG_Settings {
 
     public static function default_image_prompt(): string {
         return 'A photorealistic, high-quality image representing: {title}. Professional photography style, natural lighting, no text overlays, no watermarks. Suitable for a Nigerian lifestyle and business blog.';
+    }
+
+    public static function get_default_image_id(): int {
+        return (int) self::get( self::KEY_DEFAULT_IMAGE, 0 );
+    }
+
+    /**
+     * Returns the model that will actually be used at runtime.
+     * Respects user preference but falls back to any configured model.
+     */
+    public static function resolve_active_model(): array|WP_Error {
+        $preferred = (string) self::get( self::KEY_ACTIVE_MODEL, 'gemini-2.0-flash' );
+        $models    = self::get_available_models();
+
+        // Build resolution order: preferred first, then the rest
+        $order = array_keys( $models );
+        usort( $order, fn( $a ) => $a === $preferred ? -1 : 1 );
+
+        foreach ( $order as $id ) {
+            $key = trim( (string) self::get( $models[ $id ]['key_opt'], '' ) );
+            if ( $key ) {
+                return [ 'id' => $id, 'key' => $key, 'model' => $models[ $id ] ];
+            }
+        }
+
+        return new WP_Error(
+            'no_model_configured',
+            'No AI model API key is configured. Go to Settings → AI Models and add a key.'
+        );
     }
 
     public static function get_available_models(): array {

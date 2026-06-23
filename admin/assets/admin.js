@@ -495,4 +495,59 @@
         $('[name="settings[' + target + ']"]').val(defValue);
     });
 
+    // =========================================================================
+    // Default placeholder image — WordPress media library
+    // =========================================================================
+
+    let mediaFrame;
+
+    $('#ille-default-image-select').on('click', function (e) {
+        e.preventDefault();
+
+        if (mediaFrame) { mediaFrame.open(); return; }
+
+        mediaFrame = wp.media({
+            title:    'Select Default Placeholder Image',
+            button:   { text: 'Use this image' },
+            multiple: false,
+            library:  { type: 'image' },
+        });
+
+        mediaFrame.on('select', function () {
+            const attachment = mediaFrame.state().get('selection').first().toJSON();
+            $('#ille-default-image-id').val(attachment.id);
+
+            const src = attachment.sizes && attachment.sizes.medium
+                ? attachment.sizes.medium.url
+                : attachment.url;
+
+            const $preview = $('#ille-default-image-preview');
+            $preview.removeClass('ille-pg-default-image-preview--empty')
+                    .html('<img src="' + src + '" alt="Default placeholder" />');
+
+            $('#ille-default-image-select').text('Change Image');
+
+            if (!$('#ille-default-image-remove').length) {
+                $('#ille-default-image-select').after(
+                    '<button type="button" id="ille-default-image-remove" class="ille-pg-btn ille-pg-btn--sm ille-pg-btn--ghost">Remove</button>'
+                );
+                bindRemove();
+            }
+        });
+
+        mediaFrame.open();
+    });
+
+    function bindRemove() {
+        $(document).on('click', '#ille-default-image-remove', function () {
+            $('#ille-default-image-id').val('');
+            $('#ille-default-image-preview')
+                .addClass('ille-pg-default-image-preview--empty')
+                .html('<span>No image selected</span>');
+            $('#ille-default-image-select').text('Select Image');
+            $(this).remove();
+        });
+    }
+    bindRemove();
+
 })(jQuery);

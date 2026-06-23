@@ -66,6 +66,8 @@ class ILLE_PG_Admin {
             ILLE_PG_VERSION
         );
 
+        wp_enqueue_media();
+
         wp_enqueue_script(
             'ille-pg-admin',
             ILLE_PG_URL . 'admin/assets/admin.js',
@@ -163,6 +165,12 @@ class ILLE_PG_Admin {
                 update_option( $key, $new );
                 ILLE_PG_Logger::log_settings_change( $key, $prev, $new );
             }
+        }
+
+        // Default image (integer attachment ID)
+        if ( isset( $fields[ ILLE_PG_Settings::KEY_DEFAULT_IMAGE ] ) ) {
+            $img_id = absint( $fields[ ILLE_PG_Settings::KEY_DEFAULT_IMAGE ] );
+            update_option( ILLE_PG_Settings::KEY_DEFAULT_IMAGE, $img_id );
         }
 
         // Prompt fields — allow safe HTML (sanitize_textarea_field strips tags)

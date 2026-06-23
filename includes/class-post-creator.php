@@ -29,11 +29,7 @@ class ILLE_PG_Post_Creator {
             $args['author_id'] = get_current_user_id() ?: 1;
         }
 
-        // --- Phase 1: dummy content ---
-        $content_data = self::generate_dummy_content( $args );
-
-        // --- Phase 2 (future): replace with AI generation ---
-        // $content_data = ILLE_PG_AI_Generator::generate( $args );
+        $content_data = ILLE_PG_AI_Generator::generate( $args );
 
         if ( is_wp_error( $content_data ) ) {
             return $content_data;
@@ -42,7 +38,10 @@ class ILLE_PG_Post_Creator {
         // Resolve featured image
         $image_id = 0;
         if ( $args['featured_image'] ) {
-            $image_id = self::get_dummy_image( $content_data['title'], $content_data['focus_keyword'] );
+            $image_id = ILLE_PG_AI_Generator::generate_image(
+                $content_data['image_prompt'] ?? $content_data['title'],
+                $content_data['focus_keyword'] ?? $content_data['title']
+            );
         }
 
         // Resolve category
@@ -64,6 +63,7 @@ class ILLE_PG_Post_Creator {
 
         $post_data = [
             'post_title'    => sanitize_text_field( $content_data['title'] ),
+            'post_name'     => sanitize_title( $content_data['slug'] ?? $content_data['focus_keyword'] ?? '' ),
             'post_content'  => wp_kses_post( $content_data['content'] ),
             'post_excerpt'  => sanitize_text_field( $content_data['excerpt'] ),
             'post_status'   => $post_status,
@@ -90,7 +90,7 @@ class ILLE_PG_Post_Creator {
         $keyword = $args['focus_keyword'] ?: $content_data['focus_keyword'];
         update_post_meta( $post_id, '_yoast_wpseo_focuskw',  sanitize_text_field( $keyword ) );
         update_post_meta( $post_id, '_yoast_wpseo_metadesc', sanitize_text_field( $content_data['excerpt'] ) );
-        update_post_meta( $post_id, '_yoast_wpseo_title',    sanitize_text_field( $content_data['title'] ) . ' %%sep%% %%sitename%%' );
+        update_post_meta( $post_id, '_yoast_wpseo_title',    sanitize_text_field( $keyword ) . ' %%sep%% %%sitename%%' );
 
         ILLE_PG_Logger::log(
             ILLE_PG_Logger::EVENT_POST_CREATED,

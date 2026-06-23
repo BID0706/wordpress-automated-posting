@@ -18,6 +18,7 @@ define( 'ILLE_PG_BASENAME', plugin_basename( __FILE__ ) );
 
 require_once ILLE_PG_DIR . 'includes/class-settings.php';
 require_once ILLE_PG_DIR . 'includes/class-logger.php';
+require_once ILLE_PG_DIR . 'includes/class-ai-generator.php';
 require_once ILLE_PG_DIR . 'includes/class-post-creator.php';
 require_once ILLE_PG_DIR . 'includes/class-scheduler.php';
 require_once ILLE_PG_DIR . 'includes/class-rest-api.php';

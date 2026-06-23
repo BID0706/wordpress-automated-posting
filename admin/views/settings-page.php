@@ -283,6 +283,11 @@ while ( count( $schedules ) < ILLE_PG_Settings::MAX_SCHEDULES ) {
                                 <?php else : ?>
                                     <span class="ille-pg-badge ille-pg-badge--orange">Paid</span>
                                 <?php endif; ?>
+                                <?php if ( $key_val ) : ?>
+                                    <span class="ille-pg-key-badge ille-pg-key-badge--set">Key set ✓</span>
+                                <?php else : ?>
+                                    <span class="ille-pg-key-badge ille-pg-key-badge--missing">No key</span>
+                                <?php endif; ?>
                             </label>
                             <p class="ille-pg-hint"><?php echo wp_kses( $model['note'], [ 'a' => [ 'href' => [], 'target' => [] ] ] ); ?></p>
                             <input type="password"
@@ -294,6 +299,25 @@ while ( count( $schedules ) < ILLE_PG_Settings::MAX_SCHEDULES ) {
                         </div>
                     <?php endforeach; ?>
                 </div>
+
+                <?php
+                $resolved = ILLE_PG_Settings::resolve_active_model();
+                if ( ! is_wp_error( $resolved ) ) :
+                    $is_preferred = $resolved['id'] === $active_model;
+                ?>
+                <p class="ille-pg-hint" style="margin-top:12px">
+                    <?php if ( $is_preferred ) : ?>
+                        <strong>Active model:</strong> <?php echo esc_html( $resolved['model']['label'] ); ?> (your preferred choice)
+                    <?php else : ?>
+                        <strong>Active model:</strong> <?php echo esc_html( $resolved['model']['label'] ); ?>
+                        <span style="color:var(--ille-warning)"> — preferred model has no key; using first available.</span>
+                    <?php endif; ?>
+                </p>
+                <?php else : ?>
+                <p class="ille-pg-hint" style="color:var(--ille-danger);margin-top:12px">
+                    ⚠ No API key configured. Post generation will fail until a key is added.
+                </p>
+                <?php endif; ?>
             </div>
         </div>
 
@@ -329,6 +353,42 @@ while ( count( $schedules ) < ILLE_PG_Settings::MAX_SCHEDULES ) {
                         data-default="<?php echo esc_attr( ILLE_PG_Settings::default_image_prompt() ); ?>">
                     Reset to default
                 </button>
+            </div>
+
+            <div class="ille-pg-card">
+                <div class="ille-pg-card__header"><h2>Default Placeholder Image</h2></div>
+                <p class="ille-pg-hint">Used as the featured image when AI image generation fails. If not set, the most recent media library image is used instead.</p>
+
+                <?php
+                $default_img_id  = ILLE_PG_Settings::get_default_image_id();
+                $default_img_src = $default_img_id ? wp_get_attachment_image_src( $default_img_id, 'medium' ) : null;
+                ?>
+
+                <div class="ille-pg-default-image-wrap">
+                    <input type="hidden"
+                        id="ille-default-image-id"
+                        name="settings[<?php echo esc_attr( ILLE_PG_Settings::KEY_DEFAULT_IMAGE ); ?>]"
+                        value="<?php echo esc_attr( $default_img_id ); ?>" />
+
+                    <?php if ( $default_img_src ) : ?>
+                        <div class="ille-pg-default-image-preview" id="ille-default-image-preview">
+                            <img src="<?php echo esc_url( $default_img_src[0] ); ?>" alt="Default placeholder" />
+                        </div>
+                    <?php else : ?>
+                        <div class="ille-pg-default-image-preview ille-pg-default-image-preview--empty" id="ille-default-image-preview">
+                            <span>No image selected</span>
+                        </div>
+                    <?php endif; ?>
+
+                    <div style="display:flex;gap:8px;margin-top:10px">
+                        <button type="button" id="ille-default-image-select" class="ille-pg-btn ille-pg-btn--sm">
+                            <?php echo $default_img_id ? 'Change Image' : 'Select Image'; ?>
+                        </button>
+                        <?php if ( $default_img_id ) : ?>
+                            <button type="button" id="ille-default-image-remove" class="ille-pg-btn ille-pg-btn--sm ille-pg-btn--ghost">Remove</button>
+                        <?php endif; ?>
+                    </div>
+                </div>
             </div>
         </div>
 

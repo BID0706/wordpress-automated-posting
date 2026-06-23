@@ -1025,3 +1025,59 @@
     color: var(--ille-text-muted);
     border-color: var(--ille-border);
 }
+
+/* ============================================================================
+   AI Models tab — key status badges
+   ============================================================================ */
+
+.ille-pg-key-badge {
+    display: inline-block;
+    padding: 2px 7px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .02em;
+    margin-left: auto;
+}
+
+.ille-pg-key-badge--set {
+    background: var(--ille-success-bg);
+    color: #065f46;
+}
+
+.ille-pg-key-badge--missing {
+    background: var(--ille-warning-bg);
+    color: #92400e;
+}
+
+/* ============================================================================
+   Prompts tab — default placeholder image
+   ============================================================================ */
+
+.ille-pg-default-image-wrap {
+    padding-top: 4px;
+}
+
+.ille-pg-default-image-preview {
+    width: 240px;
+    height: 126px;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid var(--ille-border);
+    background: var(--ille-bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.ille-pg-default-image-preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.ille-pg-default-image-preview--empty {
+    color: var(--ille-text-muted);
+    font-size: 13px;
+}
