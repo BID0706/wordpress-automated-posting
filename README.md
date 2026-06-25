@@ -117,6 +117,7 @@ ille-post-generator-v2/
 | **Phase 2** | ✅ Complete | AI content generation (Gemini / GPT-4o Mini / Grok), image generation (Pollinations.ai), full Yoast SEO optimisation |
 | **Phase 2.1** | ✅ Complete | Async image generation, multi-model image support (Pollinations / DALL·E 3 / Grok Aurora / Gemini Imagen), Pollinations API key, image model selector |
 | **Phase 2.2** | ✅ Complete | Content uniqueness: covered topics/keyword injection, duplicate keyword detection with fresh-angle context, 2-word keyword limit |
+| **Phase 2.3** | ✅ Complete | API key management: users can revoke their own key, admins can revoke any user's key; Copy/Regenerate/Revoke actions moved to ellipsis menu with copy icon shortcut |
 
 ### Text AI Models
 
@@ -148,7 +149,7 @@ The REST endpoint supports two authentication methods:
 1. **WordPress session** — any logged-in user with an allowed role (default: Administrator) can call the endpoint without an API key
 2. **API key** — pass the secret as an `X-API-Key` header or `?api_key=` query parameter for external/cron callers
 
-The API key is auto-generated on plugin activation and can be regenerated in **Settings → Auth & Roles**.
+The API key can be generated, regenerated, copied, or revoked from **Settings → Auth & Roles** via the ellipsis (⋯) menu next to each user's key. Users can manage their own key; administrators can manage any user's key. Revoking a key immediately invalidates it — a new one must be generated to restore access.
 
 ---
 

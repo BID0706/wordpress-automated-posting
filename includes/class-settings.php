@@ -64,6 +64,11 @@ class ILLE_PG_Settings {
         update_user_meta( $user_id, self::USER_META_API_KEY_LAST, current_time( 'mysql' ) );
     }
 
+    public static function revoke_user_api_key( int $user_id ): void {
+        delete_user_meta( $user_id, self::USER_META_API_KEY );
+        delete_user_meta( $user_id, self::USER_META_API_KEY_LAST );
+    }
+
     public static function get_users_with_allowed_roles(): array {
         $roles = self::get_allowed_roles();
         if ( empty( $roles ) ) return [];

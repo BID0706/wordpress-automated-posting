@@ -9,6 +9,7 @@ class ILLE_PG_Admin {
         add_action( 'wp_ajax_ille_pg_generate',       [ $this, 'ajax_generate' ] );
         add_action( 'wp_ajax_ille_pg_save_settings',  [ $this, 'ajax_save_settings' ] );
         add_action( 'wp_ajax_ille_pg_regenerate_key', [ $this, 'ajax_regenerate_key' ] );
+        add_action( 'wp_ajax_ille_pg_revoke_key',     [ $this, 'ajax_revoke_key' ] );
         add_action( 'wp_ajax_ille_pg_test_endpoint',  [ $this, 'ajax_test_endpoint' ] );
         add_action( 'wp_ajax_ille_pg_log_export',     [ $this, 'ajax_log_export' ] );
         add_action( 'wp_ajax_ille_pg_log_truncate',   [ $this, 'ajax_log_truncate' ] );
@@ -265,13 +266,14 @@ class ILLE_PG_Admin {
     public function ajax_regenerate_key() {
         check_ajax_referer( 'ille_pg_nonce', 'nonce' );
 
-        if ( ! current_user_can( 'manage_options' ) ) {
-            wp_send_json_error( [ 'message' => 'Permission denied.' ], 403 );
-        }
-
         $user_id = (int) ( $_POST['user_id'] ?? 0 );
         if ( ! $user_id || ! get_userdata( $user_id ) ) {
             wp_send_json_error( [ 'message' => 'Invalid user.' ], 400 );
+        }
+
+        $is_own = $user_id === get_current_user_id();
+        if ( ! $is_own && ! current_user_can( 'manage_options' ) ) {
+            wp_send_json_error( [ 'message' => 'Permission denied.' ], 403 );
         }
 
         $had_key = ! empty( ILLE_PG_Settings::get_user_api_key( $user_id ) );
@@ -287,6 +289,34 @@ class ILLE_PG_Admin {
             'api_key' => $new_key,
             'user_id' => $user_id,
         ] );
+    }
+
+    // -------------------------------------------------------------------------
+    // AJAX: Revoke API Key
+    // -------------------------------------------------------------------------
+
+    public function ajax_revoke_key() {
+        check_ajax_referer( 'ille_pg_nonce', 'nonce' );
+
+        $user_id = (int) ( $_POST['user_id'] ?? 0 );
+        if ( ! $user_id || ! get_userdata( $user_id ) ) {
+            wp_send_json_error( [ 'message' => 'Invalid user.' ], 400 );
+        }
+
+        $is_own = $user_id === get_current_user_id();
+        if ( ! $is_own && ! current_user_can( 'manage_options' ) ) {
+            wp_send_json_error( [ 'message' => 'Permission denied.' ], 403 );
+        }
+
+        ILLE_PG_Settings::revoke_user_api_key( $user_id );
+
+        ILLE_PG_Logger::log( ILLE_PG_Logger::EVENT_API_KEY_ACTION, [
+            'action'          => 'revoked',
+            'target_user_id'  => $user_id,
+            'target_username' => get_userdata( $user_id )->display_name ?? '',
+        ] );
+
+        wp_send_json_success( [ 'user_id' => $user_id ] );
     }
 
     // -------------------------------------------------------------------------

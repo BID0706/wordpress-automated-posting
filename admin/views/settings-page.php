@@ -239,18 +239,45 @@ while ( count( $schedules ) < ILLE_PG_Settings::MAX_SCHEDULES ) {
                                             value="<?php echo esc_attr( $u_key ); ?>"
                                             readonly />
                                         <button type="button"
-                                            class="ille-pg-btn ille-pg-btn--sm ille-pg-copy-btn"
-                                            data-copy-input="ille-user-key-<?php echo esc_attr( $u->ID ); ?>">Copy</button>
+                                            class="ille-pg-icon-btn ille-pg-copy-key-icon"
+                                            data-copy-input="ille-user-key-<?php echo esc_attr( $u->ID ); ?>"
+                                            title="Copy key">
+                                            <span class="dashicons dashicons-clipboard"></span>
+                                        </button>
                                     <?php else : ?>
-                                        <span class="ille-pg-hint">No key yet</span>
+                                        <span class="ille-pg-hint" id="ille-no-key-<?php echo esc_attr( $u->ID ); ?>">No key yet</span>
                                     <?php endif; ?>
                                     <?php if ( $can_manage ) : ?>
-                                        <button type="button"
-                                            class="ille-pg-btn ille-pg-btn--sm ille-pg-btn--danger ille-pg-regen-user-key"
-                                            data-user-id="<?php echo esc_attr( $u->ID ); ?>"
-                                            data-user-name="<?php echo esc_attr( $u->display_name ); ?>">
-                                            <?php echo $key_exists ? 'Regenerate' : 'Generate'; ?>
-                                        </button>
+                                        <div class="ille-pg-ellipsis-wrap" data-user-id="<?php echo esc_attr( $u->ID ); ?>">
+                                            <button type="button" class="ille-pg-icon-btn ille-pg-ellipsis-trigger" title="More options">
+                                                <span class="dashicons dashicons-ellipsis"></span>
+                                            </button>
+                                            <div class="ille-pg-ellipsis-menu" hidden>
+                                                <?php if ( $key_exists ) : ?>
+                                                <button type="button"
+                                                    class="ille-pg-ellipsis-item ille-pg-copy-btn"
+                                                    data-copy-input="ille-user-key-<?php echo esc_attr( $u->ID ); ?>">
+                                                    <span class="dashicons dashicons-clipboard"></span> Copy
+                                                </button>
+                                                <?php endif; ?>
+                                                <button type="button"
+                                                    class="ille-pg-ellipsis-item ille-pg-regen-user-key"
+                                                    data-user-id="<?php echo esc_attr( $u->ID ); ?>"
+                                                    data-user-name="<?php echo esc_attr( $u->display_name ); ?>"
+                                                    data-key-exists="<?php echo $key_exists ? '1' : '0'; ?>">
+                                                    <span class="dashicons dashicons-update"></span>
+                                                    <?php echo $key_exists ? 'Regenerate' : 'Generate'; ?>
+                                                </button>
+                                                <?php if ( $key_exists ) : ?>
+                                                <button type="button"
+                                                    class="ille-pg-ellipsis-item ille-pg-ellipsis-item--danger ille-pg-revoke-user-key"
+                                                    data-user-id="<?php echo esc_attr( $u->ID ); ?>"
+                                                    data-user-name="<?php echo esc_attr( $u->display_name ); ?>">
+                                                    <span class="dashicons dashicons-trash"></span> Revoke
+                                                </button>
+                                                <?php endif; ?>
+                                            </div>
+                                        </div>
                                     <?php endif; ?>
                                 </div>
                             </div>
