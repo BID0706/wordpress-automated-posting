@@ -138,16 +138,13 @@
         const $warning = $('#ille-keyword-warning');
         const $submit  = $('#ille-pg-submit');
 
-        // Word count guard
+        // Word count advisory (non-blocking)
         if ( words.length > 2 ) {
-            $hint.text('Too long — please use 1–2 words').addClass('ille-pg-hint--error');
-            $submit.prop('disabled', true);
-            $warning.attr('hidden', true);
-            clearTimeout( keywordCheckTimer );
-            return;
+            $hint.text('Best results with 1–2 words — longer phrases may reduce SEO precision')
+                 .removeClass('ille-pg-hint--error').addClass('ille-pg-hint--warning');
         } else {
-            $hint.text('1–2 words for best SEO results').removeClass('ille-pg-hint--error');
-            $submit.prop('disabled', false);
+            $hint.text('1–2 words for best SEO results')
+                 .removeClass('ille-pg-hint--error ille-pg-hint--warning');
         }
 
         // Debounced duplicate check

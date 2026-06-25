@@ -870,7 +870,8 @@
 
 .ille-pg-hint--ok    { color: var(--ille-success) !important; }
 .ille-pg-hint--err   { color: var(--ille-danger)  !important; }
-.ille-pg-hint--error { color: var(--ille-danger)  !important; font-weight: 500; }
+.ille-pg-hint--error   { color: var(--ille-danger)  !important; font-weight: 500; }
+.ille-pg-hint--warning { color: var(--ille-warning) !important; font-weight: 500; }
 
 /* ============================================================================
    Settings footer

@@ -96,9 +96,7 @@ class ILLE_PG_REST_API {
         }
 
         if ( in_array( 'focus_keyword', $allowed_params, true ) ) {
-            $args['focus_keyword'] = ILLE_PG_Post_Creator::sanitize_keyword(
-                sanitize_text_field( $request->get_param( 'focus_keyword' ) ?: '' )
-            );
+            $args['focus_keyword'] = sanitize_text_field( $request->get_param( 'focus_keyword' ) ?: '' );
         }
 
         if ( in_array( 'featured_image', $allowed_params, true ) ) {
