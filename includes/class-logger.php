@@ -158,6 +158,14 @@ class ILLE_PG_Logger {
         }
     }
 
+    public static function truncate_to_last( int $n = 100 ): void {
+        $file = self::log_file();
+        if ( ! file_exists( $file ) ) return;
+        $lines = file( $file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES );
+        if ( count( $lines ) <= $n ) return;
+        file_put_contents( $file, implode( "\n", array_slice( $lines, -$n ) ) . "\n", LOCK_EX );
+    }
+
     public static function delete(): void {
         $file = self::log_file();
         if ( file_exists( $file ) ) {

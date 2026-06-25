@@ -2,6 +2,7 @@
 if ( ! defined( 'ABSPATH' ) ) exit;
 
 $endpoint_url = ILLE_PG_Settings::get_endpoint_url();
+$mcp_url      = rest_url( ILLE_PG_Settings::get_rest_namespace() . '/mcp' );
 $schedules    = ILLE_PG_Settings::get_schedules();
 $next_runs    = ILLE_PG_Scheduler::get_next_runs();
 $models       = ILLE_PG_Settings::get_available_models();
@@ -126,6 +127,16 @@ while ( count( $schedules ) < ILLE_PG_Settings::MAX_SCHEDULES ) {
                             </label>
                         <?php endforeach; ?>
                     </div>
+                </div>
+
+                <div class="ille-pg-field">
+                    <label class="ille-pg-label">MCP Endpoint (Claude Desktop / Cursor)</label>
+                    <div class="ille-pg-copy-row">
+                        <code class="ille-pg-code" id="ille-mcp-url"><?php echo esc_html( $mcp_url ); ?></code>
+                        <button type="button" class="ille-pg-btn ille-pg-btn--sm ille-pg-copy-btn" data-copy="ille-mcp-url">Copy</button>
+                    </div>
+                    <p class="ille-pg-hint">Add to your Claude Desktop <code>claude_desktop_config.json</code>:<br>
+                    <code>{ "type": "http", "url": "<?php echo esc_html( $mcp_url ); ?>", "headers": { "X-API-Key": "your-key" } }</code></p>
                 </div>
 
                 <div class="ille-pg-field">
