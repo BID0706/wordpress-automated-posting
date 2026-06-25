@@ -283,7 +283,7 @@ while ( count( $schedules ) < ILLE_PG_Settings::MAX_SCHEDULES ) {
                         </div>
                     </div>
 
-                    <div class="ille-pg-key-pagination" id="ille-key-pagination" hidden>
+                    <div class="ille-pg-key-pagination" id="ille-key-pagination" style="display:none">
                         <button type="button" class="ille-pg-btn ille-pg-btn--sm ille-pg-btn--ghost" id="ille-key-prev">
                             <span class="dashicons dashicons-arrow-left-alt2"></span>
                         </button>

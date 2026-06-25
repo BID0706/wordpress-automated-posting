@@ -379,7 +379,7 @@
         const $list = $('#ille-key-list-rows');
         const $pag  = $('#ille-key-pagination');
         $list.html('<div class="ille-pg-key-list-loading"><span class="dashicons dashicons-update spin"></span> Loading…</div>');
-        $pag.attr('hidden', '');
+        $pag.hide();
 
         $.ajax({
             url:    ILLE_PG.ajax_url,
@@ -397,7 +397,7 @@
                     $('#ille-key-page-info').text('Page ' + d.page + ' of ' + d.pages + ' (' + d.total + ' users)');
                     $('#ille-key-prev').prop('disabled', d.page <= 1);
                     $('#ille-key-next').prop('disabled', d.page >= d.pages);
-                    $pag.removeAttr('hidden');
+                    $pag.show();
                 }
             },
             error: function () {
