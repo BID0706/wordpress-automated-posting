@@ -131,11 +131,15 @@ while ( count( $schedules ) < ILLE_PG_Settings::MAX_SCHEDULES ) {
                 <div class="ille-pg-field">
                     <label class="ille-pg-label">Usage Examples</label>
                     <div class="ille-pg-code-block">
-                        <p># On-demand with topic:</p>
+                        <p># Header auth — on-demand with topic:</p>
                         <code>curl -H "X-API-Key: YOUR_KEY" "<?php echo esc_html( $endpoint_url ); ?>?topic=How+to+save+money"</code>
-                        <p># Draft only:</p>
+                        <p># URL param auth — useful for no-code tools &amp; browser testing:</p>
+                        <code><?php echo esc_html( $endpoint_url ); ?>?x-api-key=YOUR_KEY&amp;topic=How+to+save+money</code>
+                        <p># Generate a draft:</p>
                         <code>curl -H "X-API-Key: YOUR_KEY" "<?php echo esc_html( $endpoint_url ); ?>?publish=false"</code>
-                        <p># Cron (every Monday 8 AM):</p>
+                        <p># With focus keyword:</p>
+                        <code>curl -H "X-API-Key: YOUR_KEY" "<?php echo esc_html( $endpoint_url ); ?>?topic=Budgeting+tips&amp;focus_keyword=save+money"</code>
+                        <p># Cron job — every Monday at 8 AM:</p>
                         <code>0 8 * * 1 curl -s -H "X-API-Key: YOUR_KEY" "<?php echo esc_html( $endpoint_url ); ?>"</code>
                     </div>
                 </div>

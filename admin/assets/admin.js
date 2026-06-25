@@ -379,7 +379,7 @@
         const $list = $('#ille-key-list-rows');
         const $pag  = $('#ille-key-pagination');
         $list.html('<div class="ille-pg-key-list-loading"><span class="dashicons dashicons-update spin"></span> Loading…</div>');
-        $pag.prop('hidden', true);
+        $pag.attr('hidden', '');
 
         $.ajax({
             url:    ILLE_PG.ajax_url,
@@ -394,10 +394,10 @@
                 }
                 $list.html(d.rows.map(renderKeyRow).join(''));
                 if (d.pages > 1) {
-                    $('#ille-key-page-info').text('Page ' + d.page + ' of ' + d.pages + '  (' + d.total + ' users)');
+                    $('#ille-key-page-info').text('Page ' + d.page + ' of ' + d.pages + ' (' + d.total + ' users)');
                     $('#ille-key-prev').prop('disabled', d.page <= 1);
                     $('#ille-key-next').prop('disabled', d.page >= d.pages);
-                    $pag.prop('hidden', false);
+                    $pag.removeAttr('hidden');
                 }
             },
             error: function () {
@@ -442,14 +442,14 @@
     $(document).on('click', '.ille-pg-ellipsis-trigger', function (e) {
         e.stopPropagation();
         const $menu = $(this).siblings('.ille-pg-ellipsis-menu');
-        const isOpen = !$menu.prop('hidden');
+        const isOpen = !$menu.attr('hidden');
         // Close all open menus first
-        $('.ille-pg-ellipsis-menu').prop('hidden', true);
-        if (!isOpen) $menu.prop('hidden', false);
+        $('.ille-pg-ellipsis-menu').attr('hidden', '');
+        if (!isOpen) $menu.removeAttr('hidden');
     });
 
     $(document).on('click', function () {
-        $('.ille-pg-ellipsis-menu').prop('hidden', true);
+        $('.ille-pg-ellipsis-menu').attr('hidden', '');
     });
 
     $(document).on('click', '.ille-pg-ellipsis-menu', function (e) {
@@ -467,7 +467,7 @@
         const keyExists = $btn.data('key-exists') === 1 || $btn.data('key-exists') === '1';
 
         // Close the menu
-        $btn.closest('.ille-pg-ellipsis-menu').prop('hidden', true);
+        $btn.closest('.ille-pg-ellipsis-menu').attr('hidden', '');
 
         if ( keyExists && !$btn.data('confirmed') ) {
             $btn.data('confirmed', true).addClass('ille-pg-ellipsis-item--warning');
@@ -476,7 +476,7 @@
             setTimeout(() => {
                 $btn.data('confirmed', false).removeClass('ille-pg-ellipsis-item--warning').html(origHtml);
             }, 3000);
-            $btn.closest('.ille-pg-ellipsis-menu').prop('hidden', false);
+            $btn.closest('.ille-pg-ellipsis-menu').removeAttr('hidden');
             return;
         }
 
@@ -545,7 +545,7 @@
         const userId   = $btn.data('user-id');
         const userName = $btn.data('user-name');
 
-        $btn.closest('.ille-pg-ellipsis-menu').prop('hidden', true);
+        $btn.closest('.ille-pg-ellipsis-menu').attr('hidden', '');
 
         if (!$btn.data('confirmed')) {
             $btn.data('confirmed', true).addClass('ille-pg-ellipsis-item--warning');
@@ -554,7 +554,7 @@
             setTimeout(() => {
                 $btn.data('confirmed', false).removeClass('ille-pg-ellipsis-item--warning').html(origHtml);
             }, 3000);
-            $btn.closest('.ille-pg-ellipsis-menu').prop('hidden', false);
+            $btn.closest('.ille-pg-ellipsis-menu').removeAttr('hidden');
             return;
         }
 
