@@ -462,6 +462,30 @@ while ( count( $schedules ) < ILLE_PG_Settings::MAX_SCHEDULES ) {
                     </div>
                 </div>
             </div>
+
+            <div class="ille-pg-card">
+                <div class="ille-pg-card__header"><h2>Content Uniqueness</h2></div>
+                <p class="ille-pg-hint">
+                    The AI is given a list of recently published post titles and focus keyphrases so it avoids repeating covered topics.
+                    If a focus keyword already exists, the AI writes a fresh angle or continuation rather than a duplicate.
+                    These measures apply to all generation paths — manual, scheduled, and REST endpoint.
+                </p>
+
+                <div class="ille-pg-field-row" style="margin-top:12px">
+                    <label class="ille-pg-label" for="ille-covered-topics-count">Covered Topics Count</label>
+                    <input
+                        type="number"
+                        id="ille-covered-topics-count"
+                        class="ille-pg-input"
+                        style="max-width:100px"
+                        name="settings[<?php echo esc_attr( ILLE_PG_Settings::KEY_COVERED_TOPICS_COUNT ); ?>]"
+                        value="<?php echo esc_attr( ILLE_PG_Settings::get_covered_topics_count() ); ?>"
+                        min="10"
+                        max="200"
+                    />
+                    <p class="ille-pg-hint">Number of recent post titles and keyphrases to inject into the AI prompt as already-covered context. Range: 10–200. Default: 50.</p>
+                </div>
+            </div>
         </div>
 
         <!-- ================================================================

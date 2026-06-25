@@ -15,8 +15,9 @@ class ILLE_PG_Settings {
     const KEY_ALLOWED_PARAMS   = 'ille_pg_allowed_params';
     const KEY_SCHEDULES        = 'ille_pg_schedules';
     const KEY_DEFAULT_IMAGE    = 'ille_pg_default_image';
-    const KEY_IMAGE_MODEL      = 'ille_pg_image_model';
-    const KEY_POLLINATIONS_KEY = 'ille_pg_pollinations_api_key';
+    const KEY_IMAGE_MODEL          = 'ille_pg_image_model';
+    const KEY_POLLINATIONS_KEY     = 'ille_pg_pollinations_api_key';
+    const KEY_COVERED_TOPICS_COUNT = 'ille_pg_covered_topics_count';
 
     const MAX_SCHEDULES = 5;
 
@@ -146,6 +147,10 @@ class ILLE_PG_Settings {
             'no_model_configured',
             'No AI model API key is configured. Go to Settings → AI Models and add a key.'
         );
+    }
+
+    public static function get_covered_topics_count(): int {
+        return max( 10, (int) self::get( self::KEY_COVERED_TOPICS_COUNT, 50 ) );
     }
 
     // -------------------------------------------------------------------------

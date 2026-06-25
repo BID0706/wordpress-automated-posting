@@ -124,6 +124,55 @@
         $('#ille-pg-error')[0].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
 
+    // =========================================================================
+    // Focus keyword — word count guard + duplicate advisory
+    // =========================================================================
+
+    let keywordCheckTimer;
+
+    $(document).on('input', '[name="focus_keyword"]', function () {
+        const keyword  = $(this).val().trim();
+        const words    = keyword ? keyword.split(/\s+/).filter(Boolean) : [];
+        const $hint    = $('#ille-kw-hint');
+        const $warning = $('#ille-keyword-warning');
+        const $submit  = $('#ille-pg-submit');
+
+        // Word count guard
+        if ( words.length > 2 ) {
+            $hint.text('Too long — please use 1–2 words').addClass('ille-pg-hint--error');
+            $submit.prop('disabled', true);
+            $warning.attr('hidden', true);
+            clearTimeout( keywordCheckTimer );
+            return;
+        } else {
+            $hint.text('1–2 words for best SEO results').removeClass('ille-pg-hint--error');
+            $submit.prop('disabled', false);
+        }
+
+        // Debounced duplicate check
+        clearTimeout( keywordCheckTimer );
+        if ( keyword.length < 3 ) { $warning.attr('hidden', true); return; }
+
+        keywordCheckTimer = setTimeout(function () {
+            $.ajax({
+                url:    ILLE_PG.ajax_url,
+                method: 'POST',
+                data:   { action: 'ille_pg_check_keyword', nonce: ILLE_PG.nonce, keyword },
+                success: function (res) {
+                    if ( res.success && res.data.exists ) {
+                        $warning.removeAttr('hidden').html(
+                            '💡 A post with this keyword already exists: <a href="'
+                            + res.data.edit_url + '" target="_blank">' + res.data.title
+                            + '</a>. The AI will write a fresh angle.'
+                        );
+                    } else {
+                        $warning.attr('hidden', true);
+                    }
+                }
+            });
+        }, 600);
+    });
+
     // Hide schedule field when post_status is draft
     $(document).on('change', '[name="post_status"]', function () {
         const isDraft = $(this).val() === 'draft';

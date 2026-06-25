@@ -13,6 +13,7 @@ class ILLE_PG_Admin {
         add_action( 'wp_ajax_ille_pg_log_export',     [ $this, 'ajax_log_export' ] );
         add_action( 'wp_ajax_ille_pg_log_truncate',   [ $this, 'ajax_log_truncate' ] );
         add_action( 'wp_ajax_ille_pg_log_delete',     [ $this, 'ajax_log_delete' ] );
+        add_action( 'wp_ajax_ille_pg_check_keyword',  [ $this, 'ajax_check_keyword' ] );
         add_action( 'admin_init', [ $this, 'maybe_flush_rewrite_rules' ] );
     }
 
@@ -107,7 +108,7 @@ class ILLE_PG_Admin {
 
         $args = [
             'topic'          => sanitize_text_field( $_POST['topic']          ?? '' ),
-            'focus_keyword'  => sanitize_text_field( $_POST['focus_keyword']  ?? '' ),
+            'focus_keyword'  => ILLE_PG_Post_Creator::sanitize_keyword( sanitize_text_field( $_POST['focus_keyword'] ?? '' ) ),
             'featured_image' => filter_var( $_POST['featured_image'] ?? true, FILTER_VALIDATE_BOOLEAN ),
             'post_status'    => sanitize_key( $_POST['post_status'] ?? 'publish' ),
             'scheduled_date' => sanitize_text_field( $_POST['scheduled_date'] ?? '' ),
@@ -167,6 +168,12 @@ class ILLE_PG_Admin {
                 update_option( $key, $new );
                 ILLE_PG_Logger::log_settings_change( $key, $prev, $new );
             }
+        }
+
+        // Covered topics count (integer, min 10)
+        if ( isset( $fields[ ILLE_PG_Settings::KEY_COVERED_TOPICS_COUNT ] ) ) {
+            update_option( ILLE_PG_Settings::KEY_COVERED_TOPICS_COUNT,
+                max( 10, absint( $fields[ ILLE_PG_Settings::KEY_COVERED_TOPICS_COUNT ] ) ) );
         }
 
         // Default image (integer attachment ID)
@@ -294,6 +301,39 @@ class ILLE_PG_Admin {
         $status  = $s['post_status'] ?? 'publish';
         $topic   = $s['topic'] ? ' | "' . $s['topic'] . '"' : '';
         return "{$enabled} | {$days} @ {$time} | {$status}{$topic}";
+    }
+
+    // -------------------------------------------------------------------------
+    // AJAX: Keyword duplicate check
+    // -------------------------------------------------------------------------
+
+    public function ajax_check_keyword() {
+        check_ajax_referer( 'ille_pg_nonce', 'nonce' );
+
+        if ( ! current_user_can( 'edit_posts' ) ) {
+            wp_send_json_error( [ 'message' => 'Permission denied.' ], 403 );
+        }
+
+        $keyword = ILLE_PG_Post_Creator::sanitize_keyword(
+            sanitize_text_field( $_POST['keyword'] ?? '' )
+        );
+
+        if ( ! $keyword ) {
+            wp_send_json_success( [ 'exists' => false ] );
+        }
+
+        $post_id = ILLE_PG_Post_Creator::find_duplicate_post( $keyword );
+
+        if ( $post_id ) {
+            wp_send_json_success( [
+                'exists'   => true,
+                'title'    => get_the_title( $post_id ),
+                'edit_url' => get_edit_post_link( $post_id, 'raw' ),
+                'post_url' => get_permalink( $post_id ),
+            ] );
+        } else {
+            wp_send_json_success( [ 'exists' => false ] );
+        }
     }
 
     // -------------------------------------------------------------------------

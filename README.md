@@ -116,6 +116,7 @@ ille-post-generator-v2/
 | **Phase 1** | ✅ Complete | Plugin structure, admin UI, REST endpoint, scheduler — dummy content |
 | **Phase 2** | ✅ Complete | AI content generation (Gemini / GPT-4o Mini / Grok), image generation (Pollinations.ai), full Yoast SEO optimisation |
 | **Phase 2.1** | ✅ Complete | Async image generation, multi-model image support (Pollinations / DALL·E 3 / Grok Aurora / Gemini Imagen), Pollinations API key, image model selector |
+| **Phase 2.2** | ✅ Complete | Content uniqueness: covered topics/keyword injection, duplicate keyword detection with fresh-angle context, 2-word keyword limit |
 
 ### Text AI Models
 
