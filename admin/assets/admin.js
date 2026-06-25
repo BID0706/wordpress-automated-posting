@@ -11,6 +11,7 @@
         $('[data-tab="' + target + '"]').addClass('active');
         $('.ille-pg-tab-panel').removeClass('active');
         $('[data-panel="' + target + '"]').addClass('active');
+        $(document).trigger('ille_pg_tab_activated', [target]);
     }
 
     $(document).on('click', '.ille-pg-tab', function () {
@@ -123,6 +124,55 @@
         $('#ille-pg-error').removeAttr('hidden');
         $('#ille-pg-error')[0].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
+
+    // =========================================================================
+    // Focus keyword — word count guard + duplicate advisory
+    // =========================================================================
+
+    let keywordCheckTimer;
+
+    $(document).on('input', '[name="focus_keyword"]', function () {
+        const keyword  = $(this).val().trim();
+        const words    = keyword ? keyword.split(/\s+/).filter(Boolean) : [];
+        const $hint    = $('#ille-kw-hint');
+        const $warning = $('#ille-keyword-warning');
+        const $submit  = $('#ille-pg-submit');
+
+        // Word count guard
+        if ( words.length > 2 ) {
+            $hint.text('Too long — please use 1–2 words').addClass('ille-pg-hint--error');
+            $submit.prop('disabled', true);
+            $warning.attr('hidden', true);
+            clearTimeout( keywordCheckTimer );
+            return;
+        } else {
+            $hint.text('1–2 words for best SEO results').removeClass('ille-pg-hint--error');
+            $submit.prop('disabled', false);
+        }
+
+        // Debounced duplicate check
+        clearTimeout( keywordCheckTimer );
+        if ( keyword.length < 3 ) { $warning.attr('hidden', true); return; }
+
+        keywordCheckTimer = setTimeout(function () {
+            $.ajax({
+                url:    ILLE_PG.ajax_url,
+                method: 'POST',
+                data:   { action: 'ille_pg_check_keyword', nonce: ILLE_PG.nonce, keyword },
+                success: function (res) {
+                    if ( res.success && res.data.exists ) {
+                        $warning.removeAttr('hidden').html(
+                            '💡 A post with this keyword already exists: <a href="'
+                            + res.data.edit_url + '" target="_blank">' + res.data.title
+                            + '</a>. The AI will write a fresh angle.'
+                        );
+                    } else {
+                        $warning.attr('hidden', true);
+                    }
+                }
+            });
+        }, 600);
+    });
 
     // Hide schedule field when post_status is draft
     $(document).on('change', '[name="post_status"]', function () {
@@ -257,6 +307,156 @@
     }
 
     // =========================================================================
+    // API key list — paginated + searchable (admin only)
+    // =========================================================================
+
+    let keyPage = 1;
+    let keySearch = '';
+    let keySearchTimer = null;
+
+    function renderKeyRow(row) {
+        const uid        = row.id;
+        const inputId    = 'ille-user-key-' + uid;
+        const keyExists  = row.key_exists;
+        const lastMeta   = row.last_used ? ' · ' + row.last_used : '';
+
+        const copyIconHtml = keyExists
+            ? `<button type="button" class="ille-pg-icon-btn ille-pg-copy-key-icon" data-copy-input="${inputId}" title="Copy key">
+                   <span class="dashicons dashicons-clipboard"></span>
+               </button>`
+            : '';
+
+        const inputHtml = keyExists
+            ? `<input type="text" id="${inputId}" class="ille-pg-input ille-pg-input--mono ille-pg-user-key-input" value="${$('<div>').text(row.key).html()}" readonly />`
+            : `<span class="ille-pg-hint" id="ille-no-key-${uid}">No key yet</span>`;
+
+        const copyMenuItem = keyExists
+            ? `<button type="button" class="ille-pg-ellipsis-item ille-pg-copy-btn" data-copy-input="${inputId}">
+                   <span class="dashicons dashicons-clipboard"></span> Copy
+               </button>`
+            : '';
+
+        const revokeMenuItem = keyExists
+            ? `<button type="button" class="ille-pg-ellipsis-item ille-pg-ellipsis-item--danger ille-pg-revoke-user-key"
+                   data-user-id="${uid}" data-user-name="${$('<div>').text(row.name).html()}">
+                   <span class="dashicons dashicons-trash"></span> Revoke
+               </button>`
+            : '';
+
+        return `
+        <div class="ille-pg-user-key-row">
+            <div class="ille-pg-user-key-row__info">
+                <span class="ille-pg-user-key-row__avatar">${$('<div>').text(row.initial).html()}</span>
+                <div>
+                    <strong>${$('<div>').text(row.name).html()}</strong>
+                    <span class="ille-pg-user-key-row__meta">${$('<div>').text(row.roles).html()}${$('<div>').text(lastMeta).html()}</span>
+                </div>
+            </div>
+            <div class="ille-pg-user-key-row__actions">
+                ${inputHtml}
+                ${copyIconHtml}
+                <div class="ille-pg-ellipsis-wrap" data-user-id="${uid}">
+                    <button type="button" class="ille-pg-icon-btn ille-pg-ellipsis-trigger" title="More options">
+                        <span class="dashicons dashicons-ellipsis"></span>
+                    </button>
+                    <div class="ille-pg-ellipsis-menu" hidden>
+                        ${copyMenuItem}
+                        <button type="button" class="ille-pg-ellipsis-item ille-pg-regen-user-key"
+                            data-user-id="${uid}"
+                            data-user-name="${$('<div>').text(row.name).html()}"
+                            data-key-exists="${keyExists ? '1' : '0'}">
+                            <span class="dashicons dashicons-update"></span>
+                            ${keyExists ? 'Regenerate' : 'Generate'}
+                        </button>
+                        ${revokeMenuItem}
+                    </div>
+                </div>
+            </div>
+        </div>`;
+    }
+
+    function loadKeyPage(page, search) {
+        const $list = $('#ille-key-list-rows');
+        const $pag  = $('#ille-key-pagination');
+        $list.html('<div class="ille-pg-key-list-loading"><span class="dashicons dashicons-update spin"></span> Loading…</div>');
+        $pag.hide();
+
+        $.ajax({
+            url:    ILLE_PG.ajax_url,
+            method: 'POST',
+            data:   { action: 'ille_pg_list_keys', nonce: ILLE_PG.nonce, page: page, search: search },
+            success: function (res) {
+                if (!res.success) { $list.html('<p class="ille-pg-hint">Failed to load users.</p>'); return; }
+                const d = res.data;
+                if (!d.rows.length) {
+                    $list.html('<p class="ille-pg-hint" style="padding:12px 0;">No other users found.</p>');
+                    return;
+                }
+                $list.html(d.rows.map(renderKeyRow).join(''));
+                if (d.pages > 1) {
+                    $('#ille-key-page-info').text('Page ' + d.page + ' of ' + d.pages + ' (' + d.total + ' users)');
+                    $('#ille-key-prev').prop('disabled', d.page <= 1);
+                    $('#ille-key-next').prop('disabled', d.page >= d.pages);
+                    $pag.show();
+                }
+            },
+            error: function () {
+                $list.html('<p class="ille-pg-hint">Request failed.</p>');
+            }
+        });
+    }
+
+    // Trigger initial load when auth tab is activated
+    $(document).on('ille_pg_tab_activated', function (e, tabId) {
+        if (tabId === 'auth' && $('#ille-key-list-rows').length) {
+            loadKeyPage(1, '');
+        }
+    });
+    // Also load immediately if auth tab is already active on page load
+    if ($('.ille-pg-tab-panel[data-panel="auth"]').hasClass('active') && $('#ille-key-list-rows').length) {
+        loadKeyPage(1, '');
+    }
+
+    $('#ille-key-search').on('input', function () {
+        clearTimeout(keySearchTimer);
+        const val = $(this).val().trim();
+        keySearchTimer = setTimeout(function () {
+            keySearch = val;
+            keyPage   = 1;
+            loadKeyPage(keyPage, keySearch);
+        }, 400);
+    });
+
+    $('#ille-key-prev').on('click', function () {
+        if (keyPage > 1) { keyPage--; loadKeyPage(keyPage, keySearch); }
+    });
+
+    $('#ille-key-next').on('click', function () {
+        keyPage++; loadKeyPage(keyPage, keySearch);
+    });
+
+    // =========================================================================
+    // Ellipsis menu — open/close
+    // =========================================================================
+
+    $(document).on('click', '.ille-pg-ellipsis-trigger', function (e) {
+        e.stopPropagation();
+        const $menu = $(this).siblings('.ille-pg-ellipsis-menu');
+        const isOpen = !$menu.attr('hidden');
+        // Close all open menus first
+        $('.ille-pg-ellipsis-menu').attr('hidden', '');
+        if (!isOpen) $menu.removeAttr('hidden');
+    });
+
+    $(document).on('click', function () {
+        $('.ille-pg-ellipsis-menu').attr('hidden', '');
+    });
+
+    $(document).on('click', '.ille-pg-ellipsis-menu', function (e) {
+        e.stopPropagation();
+    });
+
+    // =========================================================================
     // Per-user API key regeneration
     // =========================================================================
 
@@ -264,17 +464,23 @@
         const $btn      = $(this);
         const userId    = $btn.data('user-id');
         const userName  = $btn.data('user-name');
-        const isRegen   = $btn.text().trim() === 'Regenerate';
+        const keyExists = $btn.data('key-exists') === 1 || $btn.data('key-exists') === '1';
 
-        if ( isRegen && !$btn.data('confirmed') ) {
-            $btn.data('confirmed', true).text('Confirm?').addClass('ille-pg-btn--warning');
+        // Close the menu
+        $btn.closest('.ille-pg-ellipsis-menu').attr('hidden', '');
+
+        if ( keyExists && !$btn.data('confirmed') ) {
+            $btn.data('confirmed', true).addClass('ille-pg-ellipsis-item--warning');
+            const origHtml = $btn.html();
+            $btn.html('<span class="dashicons dashicons-warning"></span> Confirm?');
             setTimeout(() => {
-                $btn.data('confirmed', false).text('Regenerate').removeClass('ille-pg-btn--warning');
+                $btn.data('confirmed', false).removeClass('ille-pg-ellipsis-item--warning').html(origHtml);
             }, 3000);
+            $btn.closest('.ille-pg-ellipsis-menu').removeAttr('hidden');
             return;
         }
 
-        $btn.prop('disabled', true).text('…');
+        $btn.prop('disabled', true);
 
         $.ajax({
             url:    ILLE_PG.ajax_url,
@@ -283,28 +489,45 @@
             success: function (res) {
                 if (res.success) {
                     const inputId = 'ille-user-key-' + userId;
-                    let $input = $('#' + inputId);
+                    const $row    = $btn.closest('.ille-pg-user-key-row__actions');
+                    let $input    = $('#' + inputId);
 
                     if ($input.length) {
                         $input.val(res.data.api_key);
                     } else {
-                        // First-time generation — replace "No key generated" span
-                        const $row = $btn.closest('.ille-pg-user-key-row__actions');
-                        $row.find('.ille-pg-hint').replaceWith(
+                        // First-time generation — add input + copy icon before the ellipsis wrap
+                        const $wrap = $btn.closest('.ille-pg-ellipsis-wrap');
+                        $row.find('#ille-no-key-' + userId).remove();
+                        $wrap.before(
                             $('<input>').attr({
                                 type: 'text', id: inputId, readonly: true,
                                 class: 'ille-pg-input ille-pg-input--mono ille-pg-user-key-input',
                                 value: res.data.api_key
-                            })
-                        );
-                        $btn.before(
-                            $('<button>').attr({type: 'button'})
-                                .addClass('ille-pg-btn ille-pg-btn--sm ille-pg-copy-btn')
+                            }),
+                            $('<button>').attr({ type: 'button', title: 'Copy key' })
+                                .addClass('ille-pg-icon-btn ille-pg-copy-key-icon')
                                 .attr('data-copy-input', inputId)
-                                .text('Copy')
+                                .html('<span class="dashicons dashicons-clipboard"></span>')
                         );
+                        // Add Copy + Revoke items to the menu if they aren't there yet
+                        if (!$btn.siblings('.ille-pg-copy-btn').length) {
+                            $btn.before(
+                                $('<button>').attr({ type: 'button' })
+                                    .addClass('ille-pg-ellipsis-item ille-pg-copy-btn')
+                                    .attr('data-copy-input', inputId)
+                                    .html('<span class="dashicons dashicons-clipboard"></span> Copy')
+                            );
+                            $btn.after(
+                                $('<button>').attr({ type: 'button' })
+                                    .addClass('ille-pg-ellipsis-item ille-pg-ellipsis-item--danger ille-pg-revoke-user-key')
+                                    .data({ 'user-id': userId, 'user-name': userName })
+                                    .html('<span class="dashicons dashicons-trash"></span> Revoke')
+                            );
+                        }
+                        $btn.data('key-exists', '1').find('.dashicons').attr('class', 'dashicons dashicons-update');
+                        $btn.contents().filter(function() { return this.nodeType === 3; }).last().replaceWith(' Regenerate');
                     }
-                    $btn.data('confirmed', false).text('Regenerate').removeClass('ille-pg-btn--warning');
+                    $btn.data('confirmed', false).removeClass('ille-pg-ellipsis-item--warning');
                 }
             },
             complete: function () {
@@ -314,10 +537,64 @@
     });
 
     // =========================================================================
-    // Copy buttons
+    // Per-user API key revoke
     // =========================================================================
 
-    $(document).on('click', '.ille-pg-copy-btn', function () {
+    $(document).on('click', '.ille-pg-revoke-user-key', function () {
+        const $btn     = $(this);
+        const userId   = $btn.data('user-id');
+        const userName = $btn.data('user-name');
+
+        $btn.closest('.ille-pg-ellipsis-menu').attr('hidden', '');
+
+        if (!$btn.data('confirmed')) {
+            $btn.data('confirmed', true).addClass('ille-pg-ellipsis-item--warning');
+            const origHtml = $btn.html();
+            $btn.html('<span class="dashicons dashicons-warning"></span> Confirm revoke?');
+            setTimeout(() => {
+                $btn.data('confirmed', false).removeClass('ille-pg-ellipsis-item--warning').html(origHtml);
+            }, 3000);
+            $btn.closest('.ille-pg-ellipsis-menu').removeAttr('hidden');
+            return;
+        }
+
+        $btn.prop('disabled', true);
+
+        $.ajax({
+            url:    ILLE_PG.ajax_url,
+            method: 'POST',
+            data:   { action: 'ille_pg_revoke_key', nonce: ILLE_PG.nonce, user_id: userId },
+            success: function (res) {
+                if (res.success) {
+                    const $row = $btn.closest('.ille-pg-user-key-row__actions');
+                    // Remove input + copy icon shortcut
+                    $row.find('.ille-pg-user-key-input').remove();
+                    $row.find('.ille-pg-copy-key-icon').remove();
+                    // Insert "No key yet" placeholder
+                    $btn.closest('.ille-pg-ellipsis-wrap').before(
+                        $('<span>').addClass('ille-pg-hint').attr('id', 'ille-no-key-' + userId).text('No key yet')
+                    );
+                    // Clean up the menu: remove Copy and Revoke items, update Generate text
+                    const $menu = $btn.closest('.ille-pg-ellipsis-menu');
+                    $menu.find('.ille-pg-copy-btn').remove();
+                    $btn.remove();
+                    $menu.find('.ille-pg-regen-user-key')
+                        .data('key-exists', '0')
+                        .find('.dashicons').attr('class', 'dashicons dashicons-update').end()
+                        .contents().filter(function() { return this.nodeType === 3; }).last().replaceWith(' Generate');
+                }
+            },
+            complete: function () {
+                $btn.prop('disabled', false);
+            }
+        });
+    });
+
+    // =========================================================================
+    // Copy buttons (ellipsis menu + copy icon shortcut)
+    // =========================================================================
+
+    $(document).on('click', '.ille-pg-copy-btn, .ille-pg-copy-key-icon', function () {
         const $btn    = $(this);
         const codeId  = $btn.data('copy');
         const inputId = $btn.data('copy-input');
@@ -329,9 +606,15 @@
         if (!text) return;
 
         navigator.clipboard.writeText(text).then(function () {
-            const prev = $btn.text();
-            $btn.text('Copied!');
-            setTimeout(() => $btn.text(prev), 2000);
+            const isIcon = $btn.hasClass('ille-pg-copy-key-icon');
+            if (isIcon) {
+                $btn.find('.dashicons').attr('class', 'dashicons dashicons-yes');
+                setTimeout(() => $btn.find('.dashicons').attr('class', 'dashicons dashicons-clipboard'), 2000);
+            } else {
+                const prev = $btn.html();
+                $btn.html('<span class="dashicons dashicons-yes"></span> Copied!');
+                setTimeout(() => $btn.html(prev), 2000);
+            }
         });
     });
 

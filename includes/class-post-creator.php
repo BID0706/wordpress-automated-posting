@@ -29,10 +29,36 @@ class ILLE_PG_Post_Creator {
             $args['author_id'] = get_current_user_id() ?: 1;
         }
 
+        // Supervised flow: pre-generation duplicate check + context injection
+        if ( $args['focus_keyword'] ) {
+            $args['focus_keyword'] = self::sanitize_keyword( $args['focus_keyword'] );
+            $existing_id           = self::find_duplicate_post( $args['focus_keyword'] );
+            if ( $existing_id ) {
+                $args['existing_post'] = [
+                    'title'   => get_the_title( $existing_id ),
+                    'excerpt' => get_the_excerpt( $existing_id ),
+                    'url'     => get_permalink( $existing_id ),
+                ];
+            }
+        }
+
         $content_data = ILLE_PG_AI_Generator::generate( $args );
 
         if ( is_wp_error( $content_data ) ) {
             return $content_data;
+        }
+
+        // Enforce 2-word limit on AI-chosen keyword and run post-generation check (unsupervised)
+        $content_data['focus_keyword'] = self::sanitize_keyword( $content_data['focus_keyword'] ?? '' );
+        if ( ! $args['focus_keyword'] ) {
+            $dup = self::find_duplicate_post( $content_data['focus_keyword'] );
+            if ( $dup ) {
+                ILLE_PG_Logger::log( ILLE_PG_Logger::EVENT_POST_CREATED, [
+                    'warning'          => 'ai_duplicate_keyword',
+                    'keyword'          => $content_data['focus_keyword'],
+                    'existing_post_id' => $dup,
+                ], $args['trigger'] ?? ILLE_PG_Logger::TRIGGER_MANUAL, $args['author_id'] );
+            }
         }
 
         // Image prompt and alt text resolved before post creation so we can
@@ -168,6 +194,39 @@ class ILLE_PG_Post_Creator {
 
         // No images in library — return 0 (no featured image)
         return 0;
+    }
+
+    // -------------------------------------------------------------------------
+    // Uniqueness helpers
+    // -------------------------------------------------------------------------
+
+    /**
+     * Find an existing post using the same focus keyword (Yoast meta or slug match).
+     * Returns post ID if found, 0 otherwise.
+     */
+    public static function find_duplicate_post( string $keyword ): int {
+        if ( ! $keyword ) return 0;
+
+        $posts = get_posts( [
+            'post_type'      => 'post',
+            'post_status'    => [ 'publish', 'draft', 'future' ],
+            'meta_query'     => [ [ 'key' => '_yoast_wpseo_focuskw', 'value' => $keyword, 'compare' => '=' ] ],
+            'numberposts'    => 1,
+            'fields'         => 'ids',
+            'no_found_rows'  => true,
+        ] );
+        if ( ! empty( $posts ) ) return (int) $posts[0];
+
+        $slug_post = get_page_by_path( sanitize_title( $keyword ), OBJECT, 'post' );
+        return $slug_post ? (int) $slug_post->ID : 0;
+    }
+
+    /**
+     * Trim focus keyword to a maximum of 2 words.
+     */
+    public static function sanitize_keyword( string $keyword ): string {
+        $words = preg_split( '/\s+/', trim( $keyword ), -1, PREG_SPLIT_NO_EMPTY );
+        return implode( ' ', array_slice( $words, 0, 2 ) );
     }
 
     // -------------------------------------------------------------------------

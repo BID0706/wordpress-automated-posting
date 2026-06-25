@@ -758,6 +758,92 @@
     color: #fff;
 }
 
+/* Key list search + pagination */
+.ille-pg-key-list-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 12px 0 4px;
+}
+
+.ille-pg-key-search {
+    max-width: 280px;
+    padding: 7px 12px;
+}
+
+.ille-pg-key-list-loading {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 16px 4px;
+    color: var(--ille-text-muted);
+    font-size: 13px;
+}
+
+.ille-pg-key-pagination {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 10px;
+    font-size: 13px;
+    color: var(--ille-text-muted);
+}
+
+/* Copy icon shortcut button */
+.ille-pg-copy-key-icon {
+    color: var(--ille-text-muted);
+    padding: 4px;
+}
+.ille-pg-copy-key-icon:hover { color: var(--ille-accent); }
+
+/* Ellipsis menu wrapper */
+.ille-pg-ellipsis-wrap {
+    position: relative;
+}
+
+.ille-pg-ellipsis-trigger {
+    color: var(--ille-text-muted);
+    padding: 4px 6px;
+}
+.ille-pg-ellipsis-trigger:hover { color: var(--ille-accent); }
+
+.ille-pg-ellipsis-menu {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 4px);
+    z-index: 200;
+    background: var(--ille-surface);
+    border: 1px solid var(--ille-border);
+    border-radius: var(--ille-radius-sm);
+    box-shadow: var(--ille-shadow-md);
+    min-width: 140px;
+    padding: 4px 0;
+}
+
+.ille-pg-ellipsis-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 8px 14px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--ille-text);
+    text-align: left;
+    transition: background .15s;
+}
+.ille-pg-ellipsis-item:hover { background: var(--ille-bg); }
+.ille-pg-ellipsis-item .dashicons { font-size: 15px; width: 15px; height: 15px; color: var(--ille-text-muted); }
+
+.ille-pg-ellipsis-item--danger { color: var(--ille-danger); }
+.ille-pg-ellipsis-item--danger .dashicons { color: var(--ille-danger); }
+.ille-pg-ellipsis-item--danger:hover { background: var(--ille-danger-bg); }
+
+.ille-pg-ellipsis-item--warning { color: var(--ille-warning); }
+.ille-pg-ellipsis-item--warning .dashicons { color: var(--ille-warning); }
+
 .ille-pg-btn--warning {
     background: var(--ille-warning-bg);
     color: var(--ille-warning);
@@ -782,8 +868,9 @@
 .ille-pg-endpoint-indicator.active  { background: var(--ille-success); }
 .ille-pg-endpoint-indicator.inactive { background: var(--ille-danger); }
 
-.ille-pg-hint--ok  { color: var(--ille-success) !important; }
-.ille-pg-hint--err { color: var(--ille-danger)  !important; }
+.ille-pg-hint--ok    { color: var(--ille-success) !important; }
+.ille-pg-hint--err   { color: var(--ille-danger)  !important; }
+.ille-pg-hint--error { color: var(--ille-danger)  !important; font-weight: 500; }
 
 /* ============================================================================
    Settings footer

@@ -44,15 +44,19 @@
                 <div class="ille-pg-field">
                     <label class="ille-pg-label" for="ille-keyword">
                         Focus Keyword
-                        <span class="ille-pg-label__hint">Optional — AI will suggest one</span>
+                        <span class="ille-pg-label__hint">Optional — AI will suggest one if blank</span>
                     </label>
                     <input
                         type="text"
                         id="ille-keyword"
                         name="focus_keyword"
                         class="ille-pg-input"
-                        placeholder="e.g. save money nigeria"
+                        placeholder="e.g. save money"
+                        maxlength="60"
+                        autocomplete="off"
                     />
+                    <span id="ille-kw-hint" class="ille-pg-hint">1–2 words for best SEO results</span>
+                    <div id="ille-keyword-warning" class="ille-pg-alert ille-pg-alert--warning" hidden></div>
                 </div>
 
                 <div class="ille-pg-fields-row">

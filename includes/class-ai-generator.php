@@ -15,7 +15,8 @@ class ILLE_PG_AI_Generator {
 
         $prompt = self::build_prompt(
             $args['topic']         ?? '',
-            $args['focus_keyword'] ?? ''
+            $args['focus_keyword'] ?? '',
+            $args
         );
 
         $raw = self::call_text_api( $model['id'], $model['key'], $prompt );
@@ -30,7 +31,7 @@ class ILLE_PG_AI_Generator {
     // Prompt building
     // -------------------------------------------------------------------------
 
-    private static function build_prompt( string $topic, string $keyword ): string {
+    private static function build_prompt( string $topic, string $keyword, array $args = [] ): string {
         if ( ! $topic ) {
             $topic = 'a trending topic in Nigerian lifestyle and business';
         }
@@ -48,18 +49,62 @@ class ILLE_PG_AI_Generator {
             $cat_names = 'Uncategorized';
         }
 
-        // Recent posts for internal linking
-        $recent_posts      = get_posts( [ 'numberposts' => 5, 'post_status' => 'publish' ] );
+        // Fetch recent posts — one query serves three purposes:
+        // internal links (first 10), covered titles, and used keyphrases
+        $n            = max( 10, ILLE_PG_Settings::get_covered_topics_count() );
+        $recent_posts = get_posts( [
+            'numberposts' => $n,
+            'post_status' => 'publish',
+            'fields'      => 'all',
+        ] );
+
+        // Internal linking context (first 10)
+        $link_posts        = array_slice( $recent_posts, 0, 10 );
         $internal_link_ctx = '';
-        if ( ! empty( $recent_posts ) ) {
+        if ( ! empty( $link_posts ) ) {
             $lines = [];
-            foreach ( $recent_posts as $p ) {
+            foreach ( $link_posts as $p ) {
                 $lines[] = '- ' . get_the_title( $p ) . ': ' . get_permalink( $p );
             }
             $internal_link_ctx = "\n\nRecent posts available for internal linking:\n" . implode( "\n", $lines );
         }
 
-        return trim( $base . $internal_link_ctx . '
+        // Covered titles — all N posts
+        $covered_ctx = '';
+        if ( ! empty( $recent_posts ) ) {
+            $titles = array_map( fn( $p ) => '- ' . get_the_title( $p ), $recent_posts );
+            $covered_ctx = "\n\nTopics ALREADY PUBLISHED on this site — do NOT write about the same topic or a close variation of any of these:\n"
+                         . implode( "\n", $titles );
+        }
+
+        // Used keyphrases — extracted from Yoast meta
+        $used_keywords_ctx = '';
+        $used_kws = [];
+        foreach ( $recent_posts as $p ) {
+            $kw = get_post_meta( $p->ID, '_yoast_wpseo_focuskw', true );
+            if ( $kw ) {
+                $used_kws[] = '- ' . $kw;
+            }
+        }
+        if ( ! empty( $used_kws ) ) {
+            $used_keywords_ctx = "\n\nFocus keyphrases already used on this site — choose a DIFFERENT keyphrase (1–2 words only):\n"
+                               . implode( "\n", array_unique( $used_kws ) );
+        }
+
+        // Existing post context (when supervised duplicate is detected)
+        $existing_ctx = '';
+        if ( ! empty( $args['existing_post'] ) ) {
+            $ep = $args['existing_post'];
+            $existing_ctx = "\n\nIMPORTANT: A post about this exact keyphrase already exists:\n"
+                          . "Title: {$ep['title']}\n"
+                          . "Summary: {$ep['excerpt']}\n"
+                          . "URL: {$ep['url']}\n\n"
+                          . "Your post MUST cover a DIFFERENT angle, continuation, or sub-topic. "
+                          . "Do NOT repeat the existing post's content. "
+                          . "Acknowledge the existing post with an internal link where appropriate.";
+        }
+
+        return trim( $base . $internal_link_ctx . $covered_ctx . $used_keywords_ctx . $existing_ctx . '
 
 MANDATORY REQUIREMENTS — follow every rule exactly:
 1. Pick exactly one category from this list: ' . $cat_names . '
@@ -72,6 +117,7 @@ MANDATORY REQUIREMENTS — follow every rule exactly:
 8. Keyphrase density should be approximately 1–2% of total word count.
 9. Minimum 800 words of body content.
 10. Use only <p>, <h2>, <h3>, <ul>, <li>, <strong>, <em>, <a> HTML tags.
+11. Focus keyphrase MUST be 1–2 words only — no phrases longer than 2 words.
 
 Respond with ONLY a valid JSON object — no markdown, no code fences, no extra text:
 {
@@ -79,7 +125,7 @@ Respond with ONLY a valid JSON object — no markdown, no code fences, no extra 
   "slug":          "focus-keyphrase-rest-of-title",
   "content":       "<p>HTML body...</p>",
   "excerpt":       "Excerpt containing the focus keyphrase (max 155 chars)",
-  "focus_keyword": "exact focus keyphrase",
+  "focus_keyword": "exact focus keyphrase (1–2 words)",
   "category":      "ExactCategoryNameFromList",
   "image_prompt":  "Short visual scene description for image generation"
 }' );

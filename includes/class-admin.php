@@ -9,10 +9,13 @@ class ILLE_PG_Admin {
         add_action( 'wp_ajax_ille_pg_generate',       [ $this, 'ajax_generate' ] );
         add_action( 'wp_ajax_ille_pg_save_settings',  [ $this, 'ajax_save_settings' ] );
         add_action( 'wp_ajax_ille_pg_regenerate_key', [ $this, 'ajax_regenerate_key' ] );
+        add_action( 'wp_ajax_ille_pg_revoke_key',     [ $this, 'ajax_revoke_key' ] );
         add_action( 'wp_ajax_ille_pg_test_endpoint',  [ $this, 'ajax_test_endpoint' ] );
         add_action( 'wp_ajax_ille_pg_log_export',     [ $this, 'ajax_log_export' ] );
         add_action( 'wp_ajax_ille_pg_log_truncate',   [ $this, 'ajax_log_truncate' ] );
         add_action( 'wp_ajax_ille_pg_log_delete',     [ $this, 'ajax_log_delete' ] );
+        add_action( 'wp_ajax_ille_pg_check_keyword',  [ $this, 'ajax_check_keyword' ] );
+        add_action( 'wp_ajax_ille_pg_list_keys',      [ $this, 'ajax_list_keys' ] );
         add_action( 'admin_init', [ $this, 'maybe_flush_rewrite_rules' ] );
     }
 
@@ -77,8 +80,9 @@ class ILLE_PG_Admin {
         );
 
         wp_localize_script( 'ille-pg-admin', 'ILLE_PG', [
-            'ajax_url' => admin_url( 'admin-ajax.php' ),
-            'nonce'    => wp_create_nonce( 'ille_pg_nonce' ),
+            'ajax_url'       => admin_url( 'admin-ajax.php' ),
+            'nonce'          => wp_create_nonce( 'ille_pg_nonce' ),
+            'current_user_id' => get_current_user_id(),
         ] );
     }
 
@@ -107,7 +111,7 @@ class ILLE_PG_Admin {
 
         $args = [
             'topic'          => sanitize_text_field( $_POST['topic']          ?? '' ),
-            'focus_keyword'  => sanitize_text_field( $_POST['focus_keyword']  ?? '' ),
+            'focus_keyword'  => ILLE_PG_Post_Creator::sanitize_keyword( sanitize_text_field( $_POST['focus_keyword'] ?? '' ) ),
             'featured_image' => filter_var( $_POST['featured_image'] ?? true, FILTER_VALIDATE_BOOLEAN ),
             'post_status'    => sanitize_key( $_POST['post_status'] ?? 'publish' ),
             'scheduled_date' => sanitize_text_field( $_POST['scheduled_date'] ?? '' ),
@@ -167,6 +171,12 @@ class ILLE_PG_Admin {
                 update_option( $key, $new );
                 ILLE_PG_Logger::log_settings_change( $key, $prev, $new );
             }
+        }
+
+        // Covered topics count (integer, min 10)
+        if ( isset( $fields[ ILLE_PG_Settings::KEY_COVERED_TOPICS_COUNT ] ) ) {
+            update_option( ILLE_PG_Settings::KEY_COVERED_TOPICS_COUNT,
+                max( 10, absint( $fields[ ILLE_PG_Settings::KEY_COVERED_TOPICS_COUNT ] ) ) );
         }
 
         // Default image (integer attachment ID)
@@ -258,13 +268,14 @@ class ILLE_PG_Admin {
     public function ajax_regenerate_key() {
         check_ajax_referer( 'ille_pg_nonce', 'nonce' );
 
-        if ( ! current_user_can( 'manage_options' ) ) {
-            wp_send_json_error( [ 'message' => 'Permission denied.' ], 403 );
-        }
-
         $user_id = (int) ( $_POST['user_id'] ?? 0 );
         if ( ! $user_id || ! get_userdata( $user_id ) ) {
             wp_send_json_error( [ 'message' => 'Invalid user.' ], 400 );
+        }
+
+        $is_own = $user_id === get_current_user_id();
+        if ( ! $is_own && ! current_user_can( 'manage_options' ) ) {
+            wp_send_json_error( [ 'message' => 'Permission denied.' ], 403 );
         }
 
         $had_key = ! empty( ILLE_PG_Settings::get_user_api_key( $user_id ) );
@@ -283,6 +294,98 @@ class ILLE_PG_Admin {
     }
 
     // -------------------------------------------------------------------------
+    // AJAX: List API Keys (paginated, searchable — admin only)
+    // -------------------------------------------------------------------------
+
+    public function ajax_list_keys() {
+        check_ajax_referer( 'ille_pg_nonce', 'nonce' );
+
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_send_json_error( [ 'message' => 'Permission denied.' ], 403 );
+        }
+
+        $per         = 20;
+        $page        = max( 1, (int) ( $_POST['page'] ?? 1 ) );
+        $search      = sanitize_text_field( $_POST['search'] ?? '' );
+        $current_uid = get_current_user_id();
+        $saved_roles = ILLE_PG_Settings::get_allowed_roles();
+
+        $base_args = [
+            'role__in' => $saved_roles,
+            'exclude'  => [ $current_uid ],
+            'orderby'  => 'display_name',
+            'order'    => 'ASC',
+        ];
+
+        if ( $search ) {
+            $base_args['search']         = '*' . $search . '*';
+            $base_args['search_columns'] = [ 'user_login', 'user_email', 'display_name' ];
+        }
+
+        // Count total matching (without LIMIT)
+        $count_query = new WP_User_Query( array_merge( $base_args, [ 'fields' => 'ID', 'number' => -1 ] ) );
+        $total       = $count_query->get_total();
+
+        // Fetch page of users
+        $users = get_users( array_merge( $base_args, [
+            'number' => $per,
+            'offset' => ( $page - 1 ) * $per,
+        ] ) );
+
+        $rows = [];
+        foreach ( $users as $u ) {
+            $key         = ILLE_PG_Settings::get_user_api_key( $u->ID );
+            $last_raw    = get_user_meta( $u->ID, ILLE_PG_Settings::USER_META_API_KEY_LAST, true );
+            $roles       = array_map( 'ucfirst', array_intersect( $u->roles, $saved_roles ) );
+            $rows[]      = [
+                'id'         => $u->ID,
+                'name'       => $u->display_name,
+                'initial'    => strtoupper( substr( $u->display_name, 0, 1 ) ),
+                'roles'      => implode( ', ', $roles ),
+                'key'        => $key,
+                'key_exists' => ! empty( $key ),
+                'last_used'  => $last_raw ? date( 'M j, Y g:i A', strtotime( $last_raw ) ) : ( ! empty( $key ) ? 'Never used' : '' ),
+            ];
+        }
+
+        wp_send_json_success( [
+            'rows'  => $rows,
+            'total' => $total,
+            'page'  => $page,
+            'pages' => max( 1, (int) ceil( $total / $per ) ),
+            'per'   => $per,
+        ] );
+    }
+
+    // -------------------------------------------------------------------------
+    // AJAX: Revoke API Key
+    // -------------------------------------------------------------------------
+
+    public function ajax_revoke_key() {
+        check_ajax_referer( 'ille_pg_nonce', 'nonce' );
+
+        $user_id = (int) ( $_POST['user_id'] ?? 0 );
+        if ( ! $user_id || ! get_userdata( $user_id ) ) {
+            wp_send_json_error( [ 'message' => 'Invalid user.' ], 400 );
+        }
+
+        $is_own = $user_id === get_current_user_id();
+        if ( ! $is_own && ! current_user_can( 'manage_options' ) ) {
+            wp_send_json_error( [ 'message' => 'Permission denied.' ], 403 );
+        }
+
+        ILLE_PG_Settings::revoke_user_api_key( $user_id );
+
+        ILLE_PG_Logger::log( ILLE_PG_Logger::EVENT_API_KEY_ACTION, [
+            'action'          => 'revoked',
+            'target_user_id'  => $user_id,
+            'target_username' => get_userdata( $user_id )->display_name ?? '',
+        ] );
+
+        wp_send_json_success( [ 'user_id' => $user_id ] );
+    }
+
+    // -------------------------------------------------------------------------
     // Helpers
     // -------------------------------------------------------------------------
 
@@ -294,6 +397,39 @@ class ILLE_PG_Admin {
         $status  = $s['post_status'] ?? 'publish';
         $topic   = $s['topic'] ? ' | "' . $s['topic'] . '"' : '';
         return "{$enabled} | {$days} @ {$time} | {$status}{$topic}";
+    }
+
+    // -------------------------------------------------------------------------
+    // AJAX: Keyword duplicate check
+    // -------------------------------------------------------------------------
+
+    public function ajax_check_keyword() {
+        check_ajax_referer( 'ille_pg_nonce', 'nonce' );
+
+        if ( ! current_user_can( 'edit_posts' ) ) {
+            wp_send_json_error( [ 'message' => 'Permission denied.' ], 403 );
+        }
+
+        $keyword = ILLE_PG_Post_Creator::sanitize_keyword(
+            sanitize_text_field( $_POST['keyword'] ?? '' )
+        );
+
+        if ( ! $keyword ) {
+            wp_send_json_success( [ 'exists' => false ] );
+        }
+
+        $post_id = ILLE_PG_Post_Creator::find_duplicate_post( $keyword );
+
+        if ( $post_id ) {
+            wp_send_json_success( [
+                'exists'   => true,
+                'title'    => get_the_title( $post_id ),
+                'edit_url' => get_edit_post_link( $post_id, 'raw' ),
+                'post_url' => get_permalink( $post_id ),
+            ] );
+        } else {
+            wp_send_json_success( [ 'exists' => false ] );
+        }
     }
 
     // -------------------------------------------------------------------------

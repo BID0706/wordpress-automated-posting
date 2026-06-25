@@ -131,11 +131,15 @@ while ( count( $schedules ) < ILLE_PG_Settings::MAX_SCHEDULES ) {
                 <div class="ille-pg-field">
                     <label class="ille-pg-label">Usage Examples</label>
                     <div class="ille-pg-code-block">
-                        <p># On-demand with topic:</p>
+                        <p># Header auth — on-demand with topic:</p>
                         <code>curl -H "X-API-Key: YOUR_KEY" "<?php echo esc_html( $endpoint_url ); ?>?topic=How+to+save+money"</code>
-                        <p># Draft only:</p>
+                        <p># URL param auth — useful for no-code tools &amp; browser testing:</p>
+                        <code><?php echo esc_html( $endpoint_url ); ?>?x-api-key=YOUR_KEY&amp;topic=How+to+save+money</code>
+                        <p># Generate a draft:</p>
                         <code>curl -H "X-API-Key: YOUR_KEY" "<?php echo esc_html( $endpoint_url ); ?>?publish=false"</code>
-                        <p># Cron (every Monday 8 AM):</p>
+                        <p># With focus keyword:</p>
+                        <code>curl -H "X-API-Key: YOUR_KEY" "<?php echo esc_html( $endpoint_url ); ?>?topic=Budgeting+tips&amp;focus_keyword=save+money"</code>
+                        <p># Cron job — every Monday at 8 AM:</p>
                         <code>0 8 * * 1 curl -s -H "X-API-Key: YOUR_KEY" "<?php echo esc_html( $endpoint_url ); ?>"</code>
                     </div>
                 </div>
@@ -176,87 +180,121 @@ while ( count( $schedules ) < ILLE_PG_Settings::MAX_SCHEDULES ) {
                 </div>
 
                 <?php
-                $is_admin      = current_user_can( 'manage_options' );
-                $current_uid   = get_current_user_id();
+                $is_admin    = current_user_can( 'manage_options' );
+                $current_uid = get_current_user_id();
+                $me          = get_userdata( $current_uid );
+                $me_key      = ILLE_PG_Settings::get_user_api_key( $current_uid );
+                $me_last_raw = get_user_meta( $current_uid, ILLE_PG_Settings::USER_META_API_KEY_LAST, true );
+                $me_roles    = array_map( fn( $r ) => ucfirst( $r ), array_intersect( $me->roles, $saved_roles ) );
+                $me_key_ex   = ! empty( $me_key );
+                ?>
 
-                // Admins see all allowed users; others see only themselves
-                if ( $is_admin ) {
-                    $all_allowed = ILLE_PG_Settings::get_users_with_allowed_roles();
-                    // Always include the current admin; include others only if they have an active key
-                    $allowed_users = array_filter( $all_allowed, function( $u ) use ( $current_uid ) {
-                        return $u->ID === $current_uid || ! empty( ILLE_PG_Settings::get_user_api_key( $u->ID ) );
-                    } );
-                } else {
-                    $allowed_users = array_filter( [ get_userdata( $current_uid ) ] );
-                }
-
-                if ( $is_admin ) : ?>
-                    <p class="ille-pg-hint">Manage API keys for all users with allowed roles. Posts created via each key are attributed to that user. Your own key is highlighted.</p>
+                <?php if ( $is_admin ) : ?>
+                    <p class="ille-pg-hint">Manage API keys for all users with allowed roles. Posts created via each key are attributed to that user. Your own key is always shown first.</p>
                 <?php else : ?>
                     <p class="ille-pg-hint">Your personal API key for external access to the endpoint. Posts created with this key will be attributed to you.</p>
                 <?php endif; ?>
 
-                <?php if ( empty( $allowed_users ) ) : ?>
-                    <p class="ille-pg-hint">No users found with the allowed roles.</p>
-                <?php else : ?>
-                    <div class="ille-pg-user-keys">
-                        <?php foreach ( $allowed_users as $u ) :
-                            $u_key      = ILLE_PG_Settings::get_user_api_key( $u->ID );
-                            $u_last     = get_user_meta( $u->ID, ILLE_PG_Settings::USER_META_API_KEY_LAST, true );
-                            $u_roles    = array_map( fn( $r ) => ucfirst( $r ), array_intersect( $u->roles, $saved_roles ) );
-                            $key_exists = ! empty( $u_key );
-                            $is_me      = ( $u->ID === $current_uid );
-                            // Non-admins can only manage their own key
-                            $can_manage = $is_admin || $is_me;
-                        ?>
-                            <div class="ille-pg-user-key-row <?php echo $is_me ? 'ille-pg-user-key-row--me' : ''; ?>">
-                                <div class="ille-pg-user-key-row__info">
-                                    <span class="ille-pg-user-key-row__avatar <?php echo $is_me ? 'ille-pg-user-key-row__avatar--me' : ''; ?>">
-                                        <?php echo esc_html( strtoupper( substr( $u->display_name, 0, 1 ) ) ); ?>
-                                    </span>
-                                    <div>
-                                        <strong>
-                                            <?php echo esc_html( $u->display_name ); ?>
-                                            <?php if ( $is_me ) : ?>
-                                                <span class="ille-pg-badge ille-pg-badge--ai">You</span>
-                                            <?php endif; ?>
-                                        </strong>
-                                        <span class="ille-pg-user-key-row__meta">
-                                            <?php echo esc_html( implode( ', ', $u_roles ) ); ?>
-                                            <?php if ( $u_last ) : ?>
-                                                · Last used: <?php echo esc_html( date( 'M j, Y g:i A', strtotime( $u_last ) ) ); ?>
-                                            <?php elseif ( $key_exists ) : ?>
-                                                · Never used
-                                            <?php endif; ?>
-                                        </span>
-                                    </div>
-                                </div>
-                                <div class="ille-pg-user-key-row__actions">
-                                    <?php if ( $key_exists ) : ?>
-                                        <input type="text"
-                                            id="ille-user-key-<?php echo esc_attr( $u->ID ); ?>"
-                                            class="ille-pg-input ille-pg-input--mono ille-pg-user-key-input"
-                                            value="<?php echo esc_attr( $u_key ); ?>"
-                                            readonly />
-                                        <button type="button"
-                                            class="ille-pg-btn ille-pg-btn--sm ille-pg-copy-btn"
-                                            data-copy-input="ille-user-key-<?php echo esc_attr( $u->ID ); ?>">Copy</button>
-                                    <?php else : ?>
-                                        <span class="ille-pg-hint">No key yet</span>
+                <div class="ille-pg-user-keys">
+
+                    <?php /* ---- Current user — always pinned at top, server-rendered ---- */ ?>
+                    <div class="ille-pg-user-key-row ille-pg-user-key-row--me">
+                        <div class="ille-pg-user-key-row__info">
+                            <span class="ille-pg-user-key-row__avatar ille-pg-user-key-row__avatar--me">
+                                <?php echo esc_html( strtoupper( substr( $me->display_name, 0, 1 ) ) ); ?>
+                            </span>
+                            <div>
+                                <strong>
+                                    <?php echo esc_html( $me->display_name ); ?>
+                                    <span class="ille-pg-badge ille-pg-badge--ai">You</span>
+                                </strong>
+                                <span class="ille-pg-user-key-row__meta">
+                                    <?php echo esc_html( implode( ', ', $me_roles ) ); ?>
+                                    <?php if ( $me_last_raw ) : ?>
+                                        · Last used: <?php echo esc_html( date( 'M j, Y g:i A', strtotime( $me_last_raw ) ) ); ?>
+                                    <?php elseif ( $me_key_ex ) : ?>
+                                        · Never used
                                     <?php endif; ?>
-                                    <?php if ( $can_manage ) : ?>
-                                        <button type="button"
-                                            class="ille-pg-btn ille-pg-btn--sm ille-pg-btn--danger ille-pg-regen-user-key"
-                                            data-user-id="<?php echo esc_attr( $u->ID ); ?>"
-                                            data-user-name="<?php echo esc_attr( $u->display_name ); ?>">
-                                            <?php echo $key_exists ? 'Regenerate' : 'Generate'; ?>
-                                        </button>
+                                </span>
+                            </div>
+                        </div>
+                        <div class="ille-pg-user-key-row__actions">
+                            <?php if ( $me_key_ex ) : ?>
+                                <input type="text"
+                                    id="ille-user-key-<?php echo esc_attr( $current_uid ); ?>"
+                                    class="ille-pg-input ille-pg-input--mono ille-pg-user-key-input"
+                                    value="<?php echo esc_attr( $me_key ); ?>"
+                                    readonly />
+                                <button type="button"
+                                    class="ille-pg-icon-btn ille-pg-copy-key-icon"
+                                    data-copy-input="ille-user-key-<?php echo esc_attr( $current_uid ); ?>"
+                                    title="Copy key">
+                                    <span class="dashicons dashicons-clipboard"></span>
+                                </button>
+                            <?php else : ?>
+                                <span class="ille-pg-hint" id="ille-no-key-<?php echo esc_attr( $current_uid ); ?>">No key yet</span>
+                            <?php endif; ?>
+                            <div class="ille-pg-ellipsis-wrap" data-user-id="<?php echo esc_attr( $current_uid ); ?>">
+                                <button type="button" class="ille-pg-icon-btn ille-pg-ellipsis-trigger" title="More options">
+                                    <span class="dashicons dashicons-ellipsis"></span>
+                                </button>
+                                <div class="ille-pg-ellipsis-menu" hidden>
+                                    <?php if ( $me_key_ex ) : ?>
+                                    <button type="button"
+                                        class="ille-pg-ellipsis-item ille-pg-copy-btn"
+                                        data-copy-input="ille-user-key-<?php echo esc_attr( $current_uid ); ?>">
+                                        <span class="dashicons dashicons-clipboard"></span> Copy
+                                    </button>
+                                    <?php endif; ?>
+                                    <button type="button"
+                                        class="ille-pg-ellipsis-item ille-pg-regen-user-key"
+                                        data-user-id="<?php echo esc_attr( $current_uid ); ?>"
+                                        data-user-name="<?php echo esc_attr( $me->display_name ); ?>"
+                                        data-key-exists="<?php echo $me_key_ex ? '1' : '0'; ?>">
+                                        <span class="dashicons dashicons-update"></span>
+                                        <?php echo $me_key_ex ? 'Regenerate' : 'Generate'; ?>
+                                    </button>
+                                    <?php if ( $me_key_ex ) : ?>
+                                    <button type="button"
+                                        class="ille-pg-ellipsis-item ille-pg-ellipsis-item--danger ille-pg-revoke-user-key"
+                                        data-user-id="<?php echo esc_attr( $current_uid ); ?>"
+                                        data-user-name="<?php echo esc_attr( $me->display_name ); ?>">
+                                        <span class="dashicons dashicons-trash"></span> Revoke
+                                    </button>
                                     <?php endif; ?>
                                 </div>
                             </div>
-                        <?php endforeach; ?>
+                        </div>
                     </div>
-                <?php endif; ?>
+
+                    <?php if ( $is_admin ) : ?>
+                    <?php /* ---- Other users — AJAX paginated list (admin only) ---- */ ?>
+                    <div class="ille-pg-key-list-controls">
+                        <input type="search"
+                            id="ille-key-search"
+                            class="ille-pg-input ille-pg-key-search"
+                            placeholder="Search users…"
+                            autocomplete="off" />
+                    </div>
+
+                    <div id="ille-key-list-rows">
+                        <div class="ille-pg-key-list-loading">
+                            <span class="dashicons dashicons-update spin"></span> Loading…
+                        </div>
+                    </div>
+
+                    <div class="ille-pg-key-pagination" id="ille-key-pagination" style="display:none">
+                        <button type="button" class="ille-pg-btn ille-pg-btn--sm ille-pg-btn--ghost" id="ille-key-prev">
+                            <span class="dashicons dashicons-arrow-left-alt2"></span>
+                        </button>
+                        <span id="ille-key-page-info"></span>
+                        <button type="button" class="ille-pg-btn ille-pg-btn--sm ille-pg-btn--ghost" id="ille-key-next">
+                            <span class="dashicons dashicons-arrow-right-alt2"></span>
+                        </button>
+                    </div>
+                    <?php endif; ?>
+
+                </div>
             </div>
         </div>
 
@@ -460,6 +498,30 @@ while ( count( $schedules ) < ILLE_PG_Settings::MAX_SCHEDULES ) {
                             <button type="button" id="ille-default-image-remove" class="ille-pg-btn ille-pg-btn--sm ille-pg-btn--ghost">Remove</button>
                         <?php endif; ?>
                     </div>
+                </div>
+            </div>
+
+            <div class="ille-pg-card">
+                <div class="ille-pg-card__header"><h2>Content Uniqueness</h2></div>
+                <p class="ille-pg-hint">
+                    The AI is given a list of recently published post titles and focus keyphrases so it avoids repeating covered topics.
+                    If a focus keyword already exists, the AI writes a fresh angle or continuation rather than a duplicate.
+                    These measures apply to all generation paths — manual, scheduled, and REST endpoint.
+                </p>
+
+                <div class="ille-pg-field-row" style="margin-top:12px">
+                    <label class="ille-pg-label" for="ille-covered-topics-count">Covered Topics Count</label>
+                    <input
+                        type="number"
+                        id="ille-covered-topics-count"
+                        class="ille-pg-input"
+                        style="max-width:100px"
+                        name="settings[<?php echo esc_attr( ILLE_PG_Settings::KEY_COVERED_TOPICS_COUNT ); ?>]"
+                        value="<?php echo esc_attr( ILLE_PG_Settings::get_covered_topics_count() ); ?>"
+                        min="10"
+                        max="200"
+                    />
+                    <p class="ille-pg-hint">Number of recent post titles and keyphrases to inject into the AI prompt as already-covered context. Range: 10–200. Default: 50.</p>
                 </div>
             </div>
         </div>
