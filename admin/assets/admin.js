@@ -11,6 +11,7 @@
         $('[data-tab="' + target + '"]').addClass('active');
         $('.ille-pg-tab-panel').removeClass('active');
         $('[data-panel="' + target + '"]').addClass('active');
+        $(document).trigger('ille_pg_tab_activated', [target]);
     }
 
     $(document).on('click', '.ille-pg-tab', function () {
@@ -304,6 +305,135 @@
         if (!Array.isArray(cur[last])) cur[last] = [];
         cur[last].push(val);
     }
+
+    // =========================================================================
+    // API key list — paginated + searchable (admin only)
+    // =========================================================================
+
+    let keyPage = 1;
+    let keySearch = '';
+    let keySearchTimer = null;
+
+    function renderKeyRow(row) {
+        const uid        = row.id;
+        const inputId    = 'ille-user-key-' + uid;
+        const keyExists  = row.key_exists;
+        const lastMeta   = row.last_used ? ' · ' + row.last_used : '';
+
+        const copyIconHtml = keyExists
+            ? `<button type="button" class="ille-pg-icon-btn ille-pg-copy-key-icon" data-copy-input="${inputId}" title="Copy key">
+                   <span class="dashicons dashicons-clipboard"></span>
+               </button>`
+            : '';
+
+        const inputHtml = keyExists
+            ? `<input type="text" id="${inputId}" class="ille-pg-input ille-pg-input--mono ille-pg-user-key-input" value="${$('<div>').text(row.key).html()}" readonly />`
+            : `<span class="ille-pg-hint" id="ille-no-key-${uid}">No key yet</span>`;
+
+        const copyMenuItem = keyExists
+            ? `<button type="button" class="ille-pg-ellipsis-item ille-pg-copy-btn" data-copy-input="${inputId}">
+                   <span class="dashicons dashicons-clipboard"></span> Copy
+               </button>`
+            : '';
+
+        const revokeMenuItem = keyExists
+            ? `<button type="button" class="ille-pg-ellipsis-item ille-pg-ellipsis-item--danger ille-pg-revoke-user-key"
+                   data-user-id="${uid}" data-user-name="${$('<div>').text(row.name).html()}">
+                   <span class="dashicons dashicons-trash"></span> Revoke
+               </button>`
+            : '';
+
+        return `
+        <div class="ille-pg-user-key-row">
+            <div class="ille-pg-user-key-row__info">
+                <span class="ille-pg-user-key-row__avatar">${$('<div>').text(row.initial).html()}</span>
+                <div>
+                    <strong>${$('<div>').text(row.name).html()}</strong>
+                    <span class="ille-pg-user-key-row__meta">${$('<div>').text(row.roles).html()}${$('<div>').text(lastMeta).html()}</span>
+                </div>
+            </div>
+            <div class="ille-pg-user-key-row__actions">
+                ${inputHtml}
+                ${copyIconHtml}
+                <div class="ille-pg-ellipsis-wrap" data-user-id="${uid}">
+                    <button type="button" class="ille-pg-icon-btn ille-pg-ellipsis-trigger" title="More options">
+                        <span class="dashicons dashicons-ellipsis"></span>
+                    </button>
+                    <div class="ille-pg-ellipsis-menu" hidden>
+                        ${copyMenuItem}
+                        <button type="button" class="ille-pg-ellipsis-item ille-pg-regen-user-key"
+                            data-user-id="${uid}"
+                            data-user-name="${$('<div>').text(row.name).html()}"
+                            data-key-exists="${keyExists ? '1' : '0'}">
+                            <span class="dashicons dashicons-update"></span>
+                            ${keyExists ? 'Regenerate' : 'Generate'}
+                        </button>
+                        ${revokeMenuItem}
+                    </div>
+                </div>
+            </div>
+        </div>`;
+    }
+
+    function loadKeyPage(page, search) {
+        const $list = $('#ille-key-list-rows');
+        const $pag  = $('#ille-key-pagination');
+        $list.html('<div class="ille-pg-key-list-loading"><span class="dashicons dashicons-update spin"></span> Loading…</div>');
+        $pag.prop('hidden', true);
+
+        $.ajax({
+            url:    ILLE_PG.ajax_url,
+            method: 'POST',
+            data:   { action: 'ille_pg_list_keys', nonce: ILLE_PG.nonce, page: page, search: search },
+            success: function (res) {
+                if (!res.success) { $list.html('<p class="ille-pg-hint">Failed to load users.</p>'); return; }
+                const d = res.data;
+                if (!d.rows.length) {
+                    $list.html('<p class="ille-pg-hint" style="padding:12px 0;">No other users found.</p>');
+                    return;
+                }
+                $list.html(d.rows.map(renderKeyRow).join(''));
+                if (d.pages > 1) {
+                    $('#ille-key-page-info').text('Page ' + d.page + ' of ' + d.pages + '  (' + d.total + ' users)');
+                    $('#ille-key-prev').prop('disabled', d.page <= 1);
+                    $('#ille-key-next').prop('disabled', d.page >= d.pages);
+                    $pag.prop('hidden', false);
+                }
+            },
+            error: function () {
+                $list.html('<p class="ille-pg-hint">Request failed.</p>');
+            }
+        });
+    }
+
+    // Trigger initial load when auth tab is activated
+    $(document).on('ille_pg_tab_activated', function (e, tabId) {
+        if (tabId === 'auth' && $('#ille-key-list-rows').length) {
+            loadKeyPage(1, '');
+        }
+    });
+    // Also load immediately if auth tab is already active on page load
+    if ($('.ille-pg-tab-panel[data-panel="auth"]').hasClass('active') && $('#ille-key-list-rows').length) {
+        loadKeyPage(1, '');
+    }
+
+    $('#ille-key-search').on('input', function () {
+        clearTimeout(keySearchTimer);
+        const val = $(this).val().trim();
+        keySearchTimer = setTimeout(function () {
+            keySearch = val;
+            keyPage   = 1;
+            loadKeyPage(keyPage, keySearch);
+        }, 400);
+    });
+
+    $('#ille-key-prev').on('click', function () {
+        if (keyPage > 1) { keyPage--; loadKeyPage(keyPage, keySearch); }
+    });
+
+    $('#ille-key-next').on('click', function () {
+        keyPage++; loadKeyPage(keyPage, keySearch);
+    });
 
     // =========================================================================
     // Ellipsis menu — open/close

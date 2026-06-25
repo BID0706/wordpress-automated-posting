@@ -15,6 +15,7 @@ class ILLE_PG_Admin {
         add_action( 'wp_ajax_ille_pg_log_truncate',   [ $this, 'ajax_log_truncate' ] );
         add_action( 'wp_ajax_ille_pg_log_delete',     [ $this, 'ajax_log_delete' ] );
         add_action( 'wp_ajax_ille_pg_check_keyword',  [ $this, 'ajax_check_keyword' ] );
+        add_action( 'wp_ajax_ille_pg_list_keys',      [ $this, 'ajax_list_keys' ] );
         add_action( 'admin_init', [ $this, 'maybe_flush_rewrite_rules' ] );
     }
 
@@ -79,8 +80,9 @@ class ILLE_PG_Admin {
         );
 
         wp_localize_script( 'ille-pg-admin', 'ILLE_PG', [
-            'ajax_url' => admin_url( 'admin-ajax.php' ),
-            'nonce'    => wp_create_nonce( 'ille_pg_nonce' ),
+            'ajax_url'       => admin_url( 'admin-ajax.php' ),
+            'nonce'          => wp_create_nonce( 'ille_pg_nonce' ),
+            'current_user_id' => get_current_user_id(),
         ] );
     }
 
@@ -288,6 +290,70 @@ class ILLE_PG_Admin {
         wp_send_json_success( [
             'api_key' => $new_key,
             'user_id' => $user_id,
+        ] );
+    }
+
+    // -------------------------------------------------------------------------
+    // AJAX: List API Keys (paginated, searchable — admin only)
+    // -------------------------------------------------------------------------
+
+    public function ajax_list_keys() {
+        check_ajax_referer( 'ille_pg_nonce', 'nonce' );
+
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_send_json_error( [ 'message' => 'Permission denied.' ], 403 );
+        }
+
+        $per         = 20;
+        $page        = max( 1, (int) ( $_POST['page'] ?? 1 ) );
+        $search      = sanitize_text_field( $_POST['search'] ?? '' );
+        $current_uid = get_current_user_id();
+        $saved_roles = ILLE_PG_Settings::get_allowed_roles();
+
+        $base_args = [
+            'role__in' => $saved_roles,
+            'exclude'  => [ $current_uid ],
+            'orderby'  => 'display_name',
+            'order'    => 'ASC',
+        ];
+
+        if ( $search ) {
+            $base_args['search']         = '*' . $search . '*';
+            $base_args['search_columns'] = [ 'user_login', 'user_email', 'display_name' ];
+        }
+
+        // Count total matching (without LIMIT)
+        $count_query = new WP_User_Query( array_merge( $base_args, [ 'fields' => 'ID', 'number' => -1 ] ) );
+        $total       = $count_query->get_total();
+
+        // Fetch page of users
+        $users = get_users( array_merge( $base_args, [
+            'number' => $per,
+            'offset' => ( $page - 1 ) * $per,
+        ] ) );
+
+        $rows = [];
+        foreach ( $users as $u ) {
+            $key         = ILLE_PG_Settings::get_user_api_key( $u->ID );
+            $last_raw    = get_user_meta( $u->ID, ILLE_PG_Settings::USER_META_API_KEY_LAST, true );
+            $roles       = array_map( 'ucfirst', array_intersect( $u->roles, $saved_roles ) );
+            $rows[]      = [
+                'id'         => $u->ID,
+                'name'       => $u->display_name,
+                'initial'    => strtoupper( substr( $u->display_name, 0, 1 ) ),
+                'roles'      => implode( ', ', $roles ),
+                'key'        => $key,
+                'key_exists' => ! empty( $key ),
+                'last_used'  => $last_raw ? date( 'M j, Y g:i A', strtotime( $last_raw ) ) : ( ! empty( $key ) ? 'Never used' : '' ),
+            ];
+        }
+
+        wp_send_json_success( [
+            'rows'  => $rows,
+            'total' => $total,
+            'page'  => $page,
+            'pages' => max( 1, (int) ceil( $total / $per ) ),
+            'per'   => $per,
         ] );
     }
 
