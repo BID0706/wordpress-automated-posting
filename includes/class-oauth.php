@@ -504,6 +504,7 @@ class ILLE_PG_OAuth {
         $hidden_fields = [
             'client_id'             => $params['client_id'],
             'redirect_uri'          => $params['redirect_uri'],
+            'response_type'         => 'code',
             'scope'                 => $params['scope'],
             'state'                 => $params['state'],
             'code_challenge'        => $params['code_challenge'],
