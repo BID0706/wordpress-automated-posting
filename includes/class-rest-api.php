@@ -17,6 +17,16 @@ class ILLE_PG_REST_API {
                 'permission_callback' => [ $this, 'check_permission' ],
             ]
         );
+
+        register_rest_route(
+            ILLE_PG_Settings::get_rest_namespace(),
+            '/upload-image',
+            [
+                'methods'             => 'POST',
+                'callback'            => [ $this, 'handle_image_upload' ],
+                'permission_callback' => [ $this, 'check_permission' ],
+            ]
+        );
     }
 
     public function check_permission( WP_REST_Request $request ): bool|WP_Error {
@@ -133,6 +143,82 @@ class ILLE_PG_REST_API {
             'post_url'    => get_permalink( $post_id ),
             'post_status' => get_post_status( $post_id ),
             'title'       => get_the_title( $post_id ),
+        ] );
+    }
+
+    // -------------------------------------------------------------------------
+    // POST /upload-image — multipart file upload (no base64 size limits)
+    // -------------------------------------------------------------------------
+    // Usage:
+    //   curl -X POST https://site.com/wp-json/ille/v2/upload-image \
+    //        -H "X-API-Key: YOUR_KEY" \
+    //        -F "file=@/path/to/image.jpg" \
+    //        -F "alt_text=My image" \
+    //        -F "post_id=123"
+    // -------------------------------------------------------------------------
+
+    public function handle_image_upload( WP_REST_Request $request ): WP_REST_Response|WP_Error {
+        require_once ABSPATH . 'wp-admin/includes/media.php';
+        require_once ABSPATH . 'wp-admin/includes/file.php';
+        require_once ABSPATH . 'wp-admin/includes/image.php';
+
+        $files = $request->get_file_params();
+
+        if ( empty( $files['file'] ) || $files['file']['error'] !== UPLOAD_ERR_OK ) {
+            $err = $files['file']['error'] ?? 'missing';
+            return new WP_REST_Response(
+                [ 'error' => "No valid file received (error: {$err}). Send a multipart/form-data POST with a \"file\" field." ],
+                400
+            );
+        }
+
+        $actor_id = is_user_logged_in()
+            ? get_current_user_id()
+            : (int) $request->get_param( '_ille_pg_user_id' );
+
+        $alt_text = sanitize_text_field( $request->get_param( 'alt_text' ) ?: '' );
+        $post_id  = (int) ( $request->get_param( 'post_id' ) ?: 0 );
+
+        // media_handle_upload reads directly from $_FILES['file']
+        $att_id = media_handle_upload( 'file', 0, [], [ 'test_form' => false ] );
+
+        if ( is_wp_error( $att_id ) ) {
+            return new WP_REST_Response( [ 'error' => $att_id->get_error_message() ], 422 );
+        }
+
+        // Image-type enforcement
+        if ( ! wp_attachment_is_image( $att_id ) ) {
+            wp_delete_attachment( $att_id, true );
+            return new WP_REST_Response(
+                [ 'error' => 'Uploaded file is not a valid image. Only JPEG, PNG, GIF, and WebP are accepted.' ],
+                422
+            );
+        }
+
+        if ( $alt_text ) {
+            update_post_meta( $att_id, '_wp_attachment_image_alt', $alt_text );
+        }
+
+        $set_as_featured = false;
+        if ( $post_id && get_post( $post_id ) ) {
+            set_post_thumbnail( $post_id, $att_id );
+            $set_as_featured = true;
+        }
+
+        ILLE_PG_Logger::log( ILLE_PG_Logger::EVENT_POST_CREATED, [
+            'action'          => 'image_uploaded',
+            'attachment_id'   => $att_id,
+            'filename'        => $files['file']['name'],
+            'set_as_featured' => $set_as_featured,
+            'post_id'         => $post_id ?: null,
+        ], ILLE_PG_Logger::TRIGGER_ENDPOINT, $actor_id );
+
+        return rest_ensure_response( [
+            'success'         => true,
+            'attachment_id'   => $att_id,
+            'url'             => wp_get_attachment_url( $att_id ),
+            'set_as_featured' => $set_as_featured,
+            'post_id'         => $post_id ?: null,
         ] );
     }
 }

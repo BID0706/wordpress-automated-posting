@@ -596,14 +596,24 @@ class ILLE_PG_MCP {
         $has_base64 = ! empty( $args['base64'] );
 
         if ( $has_url === $has_base64 ) {
-            return $this->err( 'Provide exactly one of "url" or "base64".' );
+            return $this->err(
+                'Provide exactly one of "url" or "base64". ' .
+                'For files larger than ~1 MB use the REST upload endpoint: ' .
+                rest_url( ILLE_PG_Settings::get_rest_namespace() . '/upload-image' )
+            );
         }
 
         $alt_text = sanitize_text_field( $args['alt_text'] ?? '' );
         $post_id  = (int) ( $args['post_id'] ?? 0 );
 
         if ( $has_url ) {
-            $url     = esc_url_raw( $args['url'] );
+            $url = esc_url_raw( $args['url'] );
+
+            // SSRF guard — reject URLs that resolve to private/loopback/reserved IPs
+            if ( ! $this->is_safe_url( $url ) ) {
+                return $this->err( 'The provided URL resolves to a private or reserved address and cannot be fetched.' );
+            }
+
             $tmpfile = download_url( $url, 30 );
             if ( is_wp_error( $tmpfile ) ) {
                 return $this->err( 'Download failed: ' . $tmpfile->get_error_message() );
@@ -612,11 +622,26 @@ class ILLE_PG_MCP {
             $file_array = [ 'name' => $filename, 'tmp_name' => $tmpfile ];
             $att_id     = media_handle_sideload( $file_array, 0, $alt_text );
             @unlink( $tmpfile );
+
         } else {
+            // Size cap: reject base64 payloads decoding to more than 10 MB
+            $max_b64_len = (int) ceil( 10 * 1024 * 1024 * 4 / 3 );
+            if ( strlen( $args['base64'] ) > $max_b64_len ) {
+                return $this->err(
+                    'Image too large for base64 upload (max 10 MB). ' .
+                    'Use the REST upload endpoint for large files: ' .
+                    rest_url( ILLE_PG_Settings::get_rest_namespace() . '/upload-image' )
+                );
+            }
+
+            $decoded = base64_decode( $args['base64'], false );
+            if ( $decoded === false || strlen( $decoded ) === 0 ) {
+                return $this->err( 'Invalid base64 data.' );
+            }
+
             $filename   = sanitize_file_name( $args['filename'] ?? 'image.jpg' );
             $tmpfile    = tempnam( sys_get_temp_dir(), 'ille-pg-' );
-            // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents
-            file_put_contents( $tmpfile, base64_decode( $args['base64'] ) );
+            file_put_contents( $tmpfile, $decoded );
             $file_array = [ 'name' => $filename, 'tmp_name' => $tmpfile ];
             $att_id     = media_handle_sideload( $file_array, 0, $alt_text );
             @unlink( $tmpfile );
@@ -624,6 +649,12 @@ class ILLE_PG_MCP {
 
         if ( is_wp_error( $att_id ) ) {
             return $this->err( 'Upload failed: ' . $att_id->get_error_message() );
+        }
+
+        // Image-type enforcement — delete and reject if the uploaded file is not an image
+        if ( ! wp_attachment_is_image( $att_id ) ) {
+            wp_delete_attachment( $att_id, true );
+            return $this->err( 'Uploaded file is not a valid image. Only JPEG, PNG, GIF, and WebP are accepted.' );
         }
 
         if ( $alt_text ) {
@@ -652,6 +683,24 @@ class ILLE_PG_MCP {
         ] );
     }
 
+    private function is_safe_url( string $url ): bool {
+        $host = wp_parse_url( $url, PHP_URL_HOST );
+        if ( ! $host ) return false;
+
+        $host = trim( $host, '[]' ); // strip IPv6 brackets
+
+        // Already an IP — validate directly
+        if ( filter_var( $host, FILTER_VALIDATE_IP ) ) {
+            return (bool) filter_var( $host, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE );
+        }
+
+        // Resolve hostname — block if DNS fails or resolves to a private range
+        $ip = gethostbyname( $host );
+        if ( $ip === $host ) return false; // DNS resolution failed
+
+        return (bool) filter_var( $ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE );
+    }
+
     private function html_to_markdown( string $html ): string {
         $md = $html;
         $md = preg_replace( '/<h2[^>]*>(.*?)<\/h2>/si',   "\n## $1\n",   $md );
@@ -677,11 +726,12 @@ class ILLE_PG_MCP {
 
     private function tool_get_endpoint_info(): array {
         return $this->ok( [
-            'namespace'      => ILLE_PG_Settings::get_rest_namespace(),
-            'route'          => ILLE_PG_Settings::get_rest_route(),
-            'endpoint_url'   => ILLE_PG_Settings::get_endpoint_url(),
-            'mcp_url'        => rest_url( ILLE_PG_Settings::get_rest_namespace() . '/mcp' ),
-            'allowed_params' => ILLE_PG_Settings::get_allowed_params(),
+            'namespace'        => ILLE_PG_Settings::get_rest_namespace(),
+            'route'            => ILLE_PG_Settings::get_rest_route(),
+            'endpoint_url'     => ILLE_PG_Settings::get_endpoint_url(),
+            'mcp_url'          => rest_url( ILLE_PG_Settings::get_rest_namespace() . '/mcp' ),
+            'upload_image_url' => rest_url( ILLE_PG_Settings::get_rest_namespace() . '/upload-image' ),
+            'allowed_params'   => ILLE_PG_Settings::get_allowed_params(),
         ] );
     }
 
