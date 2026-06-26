@@ -37,30 +37,50 @@ class ILLE_PG_OAuth {
             'index.php?ille_pg_oauth_metadata=1',
             'top'
         );
+        // RFC 9728: Protected Resource Metadata — ChatGPT's MCP client reads this first
+        add_rewrite_rule(
+            '^\.well-known/oauth-protected-resource/?$',
+            'index.php?ille_pg_oauth_resource=1',
+            'top'
+        );
         add_filter( 'query_vars', function ( array $vars ): array {
             $vars[] = 'ille_pg_oauth_metadata';
+            $vars[] = 'ille_pg_oauth_resource';
             return $vars;
         } );
     }
 
     public function serve_well_known(): void {
-        if ( ! get_query_var( 'ille_pg_oauth_metadata' ) ) {
-            return;
+        // Authorization Server Metadata (RFC 8414)
+        if ( get_query_var( 'ille_pg_oauth_metadata' ) ) {
+            $ns = ILLE_PG_Settings::get_rest_namespace();
+            header( 'Content-Type: application/json; charset=utf-8' );
+            echo wp_json_encode( [
+                'issuer'                                => get_bloginfo( 'url' ),
+                'authorization_endpoint'                => rest_url( $ns . '/oauth/authorize' ),
+                'token_endpoint'                        => rest_url( $ns . '/oauth/token' ),
+                'registration_endpoint'                 => rest_url( $ns . '/oauth/register' ),
+                'scopes_supported'                      => [ 'mcp' ],
+                'response_types_supported'              => [ 'code' ],
+                'grant_types_supported'                 => [ 'authorization_code', 'refresh_token' ],
+                'code_challenge_methods_supported'      => [ 'S256' ],
+                'token_endpoint_auth_methods_supported' => [ 'client_secret_post', 'none' ],
+            ] );
+            exit;
         }
-        $ns = ILLE_PG_Settings::get_rest_namespace();
-        header( 'Content-Type: application/json; charset=utf-8' );
-        echo wp_json_encode( [
-            'issuer'                                => get_bloginfo( 'url' ),
-            'authorization_endpoint'                => rest_url( $ns . '/oauth/authorize' ),
-            'token_endpoint'                        => rest_url( $ns . '/oauth/token' ),
-            'registration_endpoint'                 => rest_url( $ns . '/oauth/register' ),
-            'scopes_supported'                      => [ 'mcp' ],
-            'response_types_supported'              => [ 'code' ],
-            'grant_types_supported'                 => [ 'authorization_code', 'refresh_token' ],
-            'code_challenge_methods_supported'      => [ 'S256' ],
-            'token_endpoint_auth_methods_supported' => [ 'client_secret_post' ],
-        ] );
-        exit;
+
+        // Protected Resource Metadata (RFC 9728) — required by ChatGPT MCP client
+        if ( get_query_var( 'ille_pg_oauth_resource' ) ) {
+            $ns = ILLE_PG_Settings::get_rest_namespace();
+            header( 'Content-Type: application/json; charset=utf-8' );
+            echo wp_json_encode( [
+                'resource'              => rest_url( $ns . '/mcp' ),
+                'authorization_servers' => [ get_bloginfo( 'url' ) ],
+                'scopes_supported'      => [ 'mcp' ],
+                'bearer_methods_supported' => [ 'header' ],
+            ] );
+            exit;
+        }
     }
 
     // =========================================================================
@@ -102,7 +122,11 @@ class ILLE_PG_OAuth {
 
     public function inject_www_authenticate_header( $response, $server, $request ) {
         if ( $response instanceof WP_REST_Response && $response->get_status() === 401 ) {
-            $response->header( 'WWW-Authenticate', 'Bearer realm="ille-pg", error="invalid_token"' );
+            $resource_metadata_url = get_bloginfo( 'url' ) . '/.well-known/oauth-protected-resource';
+            $response->header(
+                'WWW-Authenticate',
+                'Bearer realm="ille-pg", resource_metadata="' . $resource_metadata_url . '"'
+            );
         }
         return $response;
     }
@@ -233,13 +257,14 @@ class ILLE_PG_OAuth {
         $redirect_uri  = (string) $request->get_param( 'redirect_uri' );
         $code_verifier = (string) $request->get_param( 'code_verifier' );
 
-        // Validate client
+        // Validate client exists
         $client = ILLE_PG_Settings::get_oauth_client( $client_id );
-        if ( ! $client || ! password_verify( $client_secret, $client['client_secret_hash'] ) ) {
-            return $this->token_error( 'invalid_client', 'Invalid client credentials.' );
+        if ( ! $client ) {
+            return $this->token_error( 'invalid_client', 'Unknown client_id.' );
         }
 
-        // Retrieve and validate auth code
+        // Retrieve and validate auth code before client secret check (so we can
+        // determine whether this is a PKCE-only (public) client exchange)
         $code_key = 'ille_pg_authcode_' . hash( 'sha256', $code );
         $stored   = get_transient( $code_key );
 
@@ -258,7 +283,8 @@ class ILLE_PG_OAuth {
             return $this->token_error( 'invalid_grant', 'Redirect URI mismatch.' );
         }
 
-        // PKCE verification (only when challenge was stored)
+        // PKCE verification (required when challenge was stored)
+        $pkce_verified = false;
         if ( ! empty( $stored['code_challenge'] ) ) {
             if ( empty( $code_verifier ) ) {
                 return $this->token_error( 'invalid_grant', 'code_verifier required.' );
@@ -266,6 +292,14 @@ class ILLE_PG_OAuth {
             $computed = rtrim( strtr( base64_encode( hash( 'sha256', $code_verifier, true ) ), '+/', '-_' ), '=' );
             if ( ! hash_equals( $stored['code_challenge'], $computed ) ) {
                 return $this->token_error( 'invalid_grant', 'PKCE verification failed.' );
+            }
+            $pkce_verified = true;
+        }
+
+        // Client authentication: require client_secret unless PKCE was used (public client)
+        if ( ! $pkce_verified ) {
+            if ( ! password_verify( $client_secret, $client['client_secret_hash'] ) ) {
+                return $this->token_error( 'invalid_client', 'Invalid client credentials.' );
             }
         }
 
@@ -278,7 +312,12 @@ class ILLE_PG_OAuth {
         $refresh_token = (string) $request->get_param( 'refresh_token' );
 
         $client = ILLE_PG_Settings::get_oauth_client( $client_id );
-        if ( ! $client || ! password_verify( $client_secret, $client['client_secret_hash'] ) ) {
+        if ( ! $client ) {
+            return $this->token_error( 'invalid_client', 'Unknown client_id.' );
+        }
+
+        // Allow refresh without client_secret if client was originally authorized via PKCE
+        if ( ! empty( $client_secret ) && ! password_verify( $client_secret, $client['client_secret_hash'] ) ) {
             return $this->token_error( 'invalid_client', 'Invalid client credentials.' );
         }
 
