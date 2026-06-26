@@ -399,7 +399,7 @@ AI assistants that do not support API key auth (ChatGPT GPT Actions, Groq UI) ca
 **Notes:**
 - PKCE (`S256`) is supported and used automatically by clients that support it.
 - X-API-Key continues to work for Cursor and Claude Desktop regardless of OAuth mode.
-- The `/oauth/register` Dynamic Client Registration endpoint is disabled by default.
+- The `/oauth/register` Dynamic Client Registration endpoint is disabled by default. To enable it: `update_option( 'ille_pg_oauth_open_registration', true );`
 
 </details>
 
