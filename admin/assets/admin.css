@@ -1244,7 +1244,7 @@
 
 /* Settings page splash screen */
 .ille-pg-splash {
-    position: absolute;
+    position: fixed;
     inset: 0;
     background: #f0f0f1;
     z-index: 10;
