@@ -481,6 +481,18 @@ class ILLE_PG_OAuth {
     // =========================================================================
 
     private function render_consent_screen( array $params, WP_User $user ): void {
+        // WordPress REST API buffers all output and encodes it as JSON.
+        // Flush every active buffer so our HTML goes directly to the browser.
+        while ( ob_get_level() > 0 ) {
+            ob_end_clean();
+        }
+        if ( ! headers_sent() ) {
+            header( 'Content-Type: text/html; charset=utf-8' );
+            header( 'X-Frame-Options: SAMEORIGIN' );
+            header( 'Cache-Control: no-store, no-cache, must-revalidate' );
+            status_header( 200 );
+        }
+
         $client_name  = esc_html( $params['client']['name'] );
         $scope        = esc_html( $params['scope'] );
         $action_url   = esc_url( rest_url( ILLE_PG_Settings::get_rest_namespace() . '/oauth/authorize' ) );
