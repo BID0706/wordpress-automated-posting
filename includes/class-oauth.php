@@ -117,15 +117,22 @@ class ILLE_PG_OAuth {
             return $this->authorize_error_response( $params->get_error_message() );
         }
 
-        // Redirect to WP login if not authenticated
-        if ( ! is_user_logged_in() ) {
+        // WordPress REST API does not honour session cookies without a WP nonce,
+        // so is_user_logged_in() returns false even after a successful wp-login
+        // redirect. Read the auth cookie directly to avoid the login loop.
+        $user_id = is_user_logged_in()
+            ? get_current_user_id()
+            : wp_validate_auth_cookie( '', 'logged_in' );
+
+        if ( ! $user_id ) {
             $current_url = rest_url( ILLE_PG_Settings::get_rest_namespace() . '/oauth/authorize' );
             $current_url = add_query_arg( $request->get_query_params(), $current_url );
             wp_redirect( wp_login_url( $current_url ) );
             exit;
         }
 
-        $user = wp_get_current_user();
+        wp_set_current_user( $user_id ); // ensure current user is set for nonce generation
+        $user = get_userdata( $user_id );
         if ( ! $this->user_has_allowed_role( $user ) ) {
             return $this->authorize_error_response( 'Your account does not have permission to authorize this application.' );
         }
@@ -139,17 +146,24 @@ class ILLE_PG_OAuth {
     // =========================================================================
 
     public function handle_authorize_post( WP_REST_Request $request ) {
-        // Verify nonce
+        // Same cookie-direct auth as the GET handler
+        $user_id = is_user_logged_in()
+            ? get_current_user_id()
+            : wp_validate_auth_cookie( '', 'logged_in' );
+
+        if ( ! $user_id ) {
+            return $this->authorize_error_response( 'You must be logged in to authorize.' );
+        }
+
+        wp_set_current_user( $user_id );
+
+        // Verify nonce (must happen after wp_set_current_user so WP knows who to check against)
         $nonce = $request->get_param( '_ille_oauth_nonce' ) ?: '';
         if ( ! wp_verify_nonce( $nonce, 'ille_pg_oauth_consent' ) ) {
             return $this->authorize_error_response( 'Security check failed. Please try again.' );
         }
 
-        if ( ! is_user_logged_in() ) {
-            return $this->authorize_error_response( 'You must be logged in to authorize.' );
-        }
-
-        $user = wp_get_current_user();
+        $user = get_userdata( $user_id );
         if ( ! $this->user_has_allowed_role( $user ) ) {
             return $this->authorize_error_response( 'Your account does not have permission.' );
         }
