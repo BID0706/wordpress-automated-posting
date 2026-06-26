@@ -1,6 +1,6 @@
 # ILLE Post Generator V2
 
-A WordPress plugin that automates SEO-optimized blog post creation via an admin UI or REST endpoint, with support for supervised (draft) and unsupervised (publish) workflows.
+A WordPress plugin that automates SEO-optimized blog post creation via an admin UI, REST endpoint, or AI assistant — with support for supervised (draft) and unsupervised (publish) workflows.
 
 Built for [ille.com.ng](https://ille.com.ng).
 
@@ -32,8 +32,15 @@ Built for [ille.com.ng](https://ille.com.ng).
 ### REST Endpoint
 - Trigger post generation externally via HTTP request
 - Dual authentication: WordPress session (no key needed) or `X-API-Key` header
-- Optional parameters: `topic`, `focus_keyword`, `featured_image`, `publish`
+- Optional parameters: `topic`, `focus_keyword`, `featured_image_gen`, `publish`
 - Configurable custom endpoint slug
+- Dedicated `POST /upload-image` endpoint for multipart image uploads
+
+### MCP Server (AI Assistant Integration)
+- Native PHP MCP server — no Node.js or npm required
+- Connect Cursor, Claude Desktop, or any MCP-compatible client directly to your WordPress site
+- 23 tools: generate posts, manage drafts, upload images, configure settings, view activity logs
+- Same per-user API key authentication as the REST endpoint
 
 ### Scheduler
 - Up to 5 independent cron-based schedules
@@ -75,21 +82,170 @@ The API key can be passed as an HTTP header or directly in the URL as a query pa
 ```bash
 # Header-based (recommended for security)
 curl -H "X-API-Key: YOUR_SECRET" \
-  "https://ille.com.ng/wp-json/ille/v2/generate-post?topic=Your+Topic"
+  "https://your-site.com/wp-json/ille/v2/generate-post?topic=Your+Topic"
 
 # URL query parameter — useful for no-code tools, webhooks, and browser testing
-https://ille.com.ng/wp-json/ille/v2/generate-post?x-api-key=YOUR_SECRET&topic=Your+Topic
+https://your-site.com/wp-json/ille/v2/generate-post?x-api-key=YOUR_SECRET&topic=Your+Topic
 
 # Generate a draft (header)
 curl -H "X-API-Key: YOUR_SECRET" \
-  "https://ille.com.ng/wp-json/ille/v2/generate-post?publish=false"
+  "https://your-site.com/wp-json/ille/v2/generate-post?publish=false"
 
 # Generate a draft (URL param)
-https://ille.com.ng/wp-json/ille/v2/generate-post?x-api-key=YOUR_SECRET&publish=false
+https://your-site.com/wp-json/ille/v2/generate-post?x-api-key=YOUR_SECRET&publish=false
 
 # Cron job — every Monday at 8 AM
-0 8 * * 1 curl -s -H "X-API-Key: YOUR_SECRET" "https://ille.com.ng/wp-json/ille/v2/generate-post"
+0 8 * * 1 curl -s -H "X-API-Key: YOUR_SECRET" "https://your-site.com/wp-json/ille/v2/generate-post"
 ```
+
+---
+
+## MCP Server (AI Assistant Integration)
+
+The plugin runs a native PHP MCP (Model Context Protocol) server inside WordPress — no Node.js, no npm, no local process required. Point any MCP-compatible AI assistant at your site's MCP endpoint and it can generate posts, manage drafts, upload images, and control every plugin setting.
+
+### MCP Endpoint
+
+```
+https://your-site.com/wp-json/ille/v2/mcp
+```
+
+Find the exact URL in your WordPress admin under **Post Generator → Settings → Endpoint**.
+
+### Connecting Cursor
+
+Add the following to your Cursor MCP settings (`~/.cursor/mcp.json` or via **Cursor → Settings → MCP**):
+
+```json
+{
+  "mcpServers": {
+    "ille-pg": {
+      "url": "https://your-site.com/wp-json/ille/v2/mcp",
+      "headers": {
+        "X-API-Key": "your-api-key-here"
+      }
+    }
+  }
+}
+```
+
+### Connecting Claude Desktop
+
+Claude Desktop only supports stdio transport natively. Use the [`mcp-remote`](https://www.npmjs.com/package/mcp-remote) bridge (requires Node.js locally):
+
+```json
+{
+  "mcpServers": {
+    "ille-pg": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-remote",
+        "https://your-site.com/wp-json/ille/v2/mcp?api_key=your-api-key-here"
+      ]
+    }
+  }
+}
+```
+
+> **Note:** Claude Desktop config does not support custom headers, so the API key is passed as a query parameter instead.
+
+### Authentication
+
+Every MCP request is authenticated using the same per-user API key as the REST endpoint. Retrieve your key from **Post Generator → Settings → Auth & Roles**.
+
+- Pass as `X-API-Key` header (Cursor, most clients)
+- Pass as `?api_key=` query parameter (Claude Desktop / `mcp-remote`)
+
+Admin-only tools (settings, API key management, activity log) require the key to belong to a WordPress administrator. Non-admin keys receive a tool-level error rather than an HTTP 403.
+
+### Available Tools
+
+#### Content
+
+| Tool | Description |
+|------|-------------|
+| `generate_post` | Run the full AI pipeline — AI writes title, content, excerpt, SEO metadata, and optionally generates a featured image |
+| `create_post` | Publish pre-written content (HTML) directly to WordPress — for when you've already drafted the post in your AI chat |
+| `get_drafts` | List draft posts with their content as markdown for inline review |
+| `publish_post` | Publish a draft, optionally applying title or content edits before going live |
+| `upload_image` | Upload an image from a public URL or base64-encoded data to the WordPress media library; optionally set as featured image |
+
+#### Endpoint
+
+| Tool | Description |
+|------|-------------|
+| `get_endpoint_info` | Returns live endpoint URL, MCP URL, upload URL, namespace, and allowed parameters |
+
+#### Auth & API Keys *(admin only)*
+
+| Tool | Description |
+|------|-------------|
+| `search_api_users` | Paginated list of users with provisioned API keys — use this to find `user_id` before key actions |
+| `refresh_api_key` | Regenerate a user's API key (old key invalidated immediately) |
+| `revoke_api_key` | Delete a user's API key |
+| `get_allowed_roles` | List all WordPress roles and which ones are currently allowed to use the plugin |
+| `set_allowed_roles` | Update which WordPress roles are permitted |
+
+#### AI Models *(admin only)*
+
+| Tool | Description |
+|------|-------------|
+| `get_models` | Returns active text/image models and all available models with `model_id`, tier, and key status |
+| `set_text_model` | Change the active AI text model |
+| `set_image_model` | Change the active AI image model |
+
+#### Prompts *(admin only)*
+
+| Tool | Description |
+|------|-------------|
+| `get_prompts` | Get the current post generation prompt and image generation prompt |
+| `update_prompt` | Update the post or image prompt |
+
+#### Schedules *(admin only)*
+
+| Tool | Description |
+|------|-------------|
+| `get_schedules` | All 5 schedule slots with enabled state, days, time, topic, and next run |
+| `update_schedule` | Update a schedule slot |
+
+#### Activity Log *(admin only)*
+
+| Tool | Description |
+|------|-------------|
+| `get_activity_log` | Read audit log entries; filter by event type or free-text search |
+| `get_user_audit` | All activity for a specific user |
+| `export_activity_log` | Full log as JSONL text |
+| `truncate_activity_log` | Keep only the most recent N entries |
+| `delete_activity_log` | Delete the log file entirely (requires `confirm: true`) |
+
+### Supervised Draft Workflow
+
+The MCP server supports a full review-before-publish workflow:
+
+1. **Generate or create a draft** — call `generate_post { publish: false }` or `create_post { publish: false }`. The response includes `content_md` — the post content rendered as markdown — so you can review it immediately in your AI chat.
+2. **Review existing drafts** — call `get_drafts` at any time to list all drafts with their markdown content.
+3. **Publish with optional edits** — call `publish_post { post_id: 123 }` to publish as-is, or `publish_post { post_id: 123, title: "New title", content: "<p>Updated...</p>" }` to apply edits atomically before publishing.
+
+### Image Upload
+
+For images generated in external tools (ChatGPT, Groq, Midjourney, etc.) or local files:
+
+**Via MCP tool** (small images, URL-based):
+```
+upload_image { url: "https://...", post_id: 123, alt_text: "Description" }
+```
+
+**Via REST endpoint** (any size, multipart — recommended for local files):
+```bash
+curl -X POST https://your-site.com/wp-json/ille/v2/upload-image \
+     -H "X-API-Key: your-api-key" \
+     -F "file=@/path/to/image.jpg" \
+     -F "alt_text=Image description" \
+     -F "post_id=123"
+```
+
+Both methods return `attachment_id` and `url`. The upload endpoint URL is returned by `get_endpoint_info` as `upload_image_url`.
 
 ---
 
@@ -103,7 +259,8 @@ ille-post-generator-v2/
 │   ├── class-ai-generator.php      # AI text & image generation (Gemini / OpenAI / xAI + Pollinations.ai)
 │   ├── class-post-creator.php      # Post assembly, Yoast fields, category resolution
 │   ├── class-logger.php            # JSONL audit log
-│   ├── class-rest-api.php          # REST endpoint & authentication
+│   ├── class-rest-api.php          # REST endpoint, authentication & image upload route
+│   ├── class-mcp.php               # MCP Streamable HTTP server (23 tools)
 │   ├── class-scheduler.php         # WP-Cron schedule management
 │   └── class-admin.php             # Admin menu, pages & AJAX handlers
 └── admin/
@@ -127,6 +284,8 @@ ille-post-generator-v2/
 | **Phase 2.2** | ✅ Complete | Content uniqueness: covered topics/keyword injection, duplicate keyword detection with fresh-angle context, 2-word keyword limit |
 | **Phase 2.3** | ✅ Complete | API key management: users can revoke their own key, admins can revoke any user's key; Copy/Regenerate/Revoke actions moved to ellipsis menu with copy icon shortcut |
 | **Phase 2.4** | ✅ Complete | API key list: current user pinned at top (server-rendered), other users loaded via paginated AJAX (20/page) with live search; eliminates N+1 queries on large user sets |
+| **Phase 3A** | ✅ Complete | Focus keyword soft limit: changed from hard block to advisory warning |
+| **Phase 3B** | ✅ Complete | Native PHP MCP server (23 tools), supervised draft workflow, image upload with security hardening |
 
 ### Text AI Models
 
