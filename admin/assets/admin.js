@@ -17,17 +17,15 @@
     $(document).on('click', '.ille-pg-tab', function () {
         const target = $(this).data('tab');
         activateTab( target );
-        try { localStorage.setItem('ille_pg_tab', target); } catch(e) {}
+        history.replaceState( null, '', '#' + target );
     });
 
-    // Restore last active tab on page load
+    // Activate tab from URL hash on page load
     (function () {
-        try {
-            const saved = localStorage.getItem('ille_pg_tab');
-            if ( saved && $('[data-tab="' + saved + '"]').length ) {
-                activateTab( saved );
-            }
-        } catch(e) {}
+        const hash = location.hash.replace( '#', '' );
+        if ( hash && $('[data-tab="' + hash + '"]').length ) {
+            activateTab( hash );
+        }
     })();
 
     // =========================================================================
