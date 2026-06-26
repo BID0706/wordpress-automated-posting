@@ -105,12 +105,19 @@ if ( ! defined( 'ABSPATH' ) ) exit;
     <?php /* Discovery endpoint info */ ?>
     <hr class="ille-pg-divider">
     <div class="ille-pg-field">
-        <label class="ille-pg-label">Discovery Document URL</label>
+        <label class="ille-pg-label">Authorization Server Metadata <span class="ille-pg-label__hint">(RFC 8414 — used by most clients)</span></label>
         <div class="ille-pg-copy-row">
             <code class="ille-pg-code" id="ille-oauth-discovery-url"><?php echo esc_url( get_bloginfo( 'url' ) . '/.well-known/oauth-authorization-server' ); ?></code>
             <button type="button" class="ille-pg-btn ille-pg-btn--sm ille-pg-copy-btn" data-copy="ille-oauth-discovery-url">Copy</button>
         </div>
-        <p class="ille-pg-hint">Paste this URL into ChatGPT / Groq GPT Action settings as the "OAuth Discovery URL" or use the individual endpoints below.</p>
+    </div>
+    <div class="ille-pg-field">
+        <label class="ille-pg-label">Protected Resource Metadata <span class="ille-pg-label__hint">(RFC 9728 — used by ChatGPT MCP client)</span></label>
+        <div class="ille-pg-copy-row">
+            <code class="ille-pg-code" id="ille-oauth-resource-url"><?php echo esc_url( get_bloginfo( 'url' ) . '/.well-known/oauth-protected-resource' ); ?></code>
+            <button type="button" class="ille-pg-btn ille-pg-btn--sm ille-pg-copy-btn" data-copy="ille-oauth-resource-url">Copy</button>
+        </div>
+        <p class="ille-pg-hint">ChatGPT auto-discovers both documents when connecting. Paste either URL into client settings as the "OAuth Discovery URL".</p>
     </div>
     <div class="ille-pg-field">
         <label class="ille-pg-label">Authorization Endpoint</label>

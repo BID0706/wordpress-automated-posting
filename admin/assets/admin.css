@@ -1235,7 +1235,9 @@
 .ille-pg-divider { border: none; border-top: 1px solid var(--ille-border, #e5e5e5); margin: 20px 0; }
 
 /* OAuth table */
-.ille-pg-table { width: 100%; border-collapse: collapse; font-size: .88rem; }
+.ille-pg-table { width: 100%; border-collapse: collapse; font-size: .88rem; table-layout: fixed; }
 .ille-pg-table th { text-align: left; padding: 8px 10px; border-bottom: 2px solid var(--ille-border, #e5e5e5); font-weight: 600; }
-.ille-pg-table td { padding: 8px 10px; border-bottom: 1px solid var(--ille-border, #e5e5e5); vertical-align: top; }
+.ille-pg-table td { padding: 8px 10px; border-bottom: 1px solid var(--ille-border, #e5e5e5); vertical-align: top; word-break: break-all; }
 .ille-pg-table tr:last-child td { border-bottom: none; }
+.ille-pg-table th:last-child,
+.ille-pg-table td:last-child { width: 80px; text-align: right; white-space: nowrap; word-break: normal; }
