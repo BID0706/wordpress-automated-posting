@@ -1244,10 +1244,10 @@
 
 /* Settings page splash screen */
 .ille-pg-splash {
-    position: fixed;
+    position: absolute;
     inset: 0;
     background: #f0f0f1;
-    z-index: 99999;
+    z-index: 10;
     display: flex;
     align-items: center;
     justify-content: center;

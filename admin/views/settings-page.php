@@ -24,13 +24,12 @@ while ( count( $schedules ) < ILLE_PG_Settings::MAX_SCHEDULES ) {
 }
 ?>
 
-<div id="ille-pg-splash" class="ille-pg-splash" aria-hidden="true">
-    <span class="ille-pg-splash__dot"></span>
-    <span class="ille-pg-splash__dot"></span>
-    <span class="ille-pg-splash__dot"></span>
-</div>
-
-<div class="ille-pg-wrap">
+<div class="ille-pg-wrap" style="position:relative">
+    <div id="ille-pg-splash" class="ille-pg-splash" aria-hidden="true">
+        <span class="ille-pg-splash__dot"></span>
+        <span class="ille-pg-splash__dot"></span>
+        <span class="ille-pg-splash__dot"></span>
+    </div>
     <div class="ille-pg-header">
         <div class="ille-pg-header__logo">
             <span class="ille-pg-header__icon">✦</span>
