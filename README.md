@@ -3,7 +3,7 @@
 A WordPress plugin that automates SEO-optimized blog post creation via an admin UI, REST endpoint, or AI assistant — with support for supervised (draft) and unsupervised (publish) workflows.
 
 Built for [ille.com.ng](https://ille.com.ng).
-
+Developer: Ibiso Barimalaa
 ---
 
 ## Table of Contents
