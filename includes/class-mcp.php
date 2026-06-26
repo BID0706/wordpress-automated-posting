@@ -182,16 +182,16 @@ class ILLE_PG_MCP {
 
             [
                 'name'        => 'create_post',
-                'description' => 'Publish pre-written content directly to WordPress — use this when you have already drafted the post in the LLM UI. Writes Yoast SEO metadata. Optionally triggers AI featured image generation. When publish is false, returns content_md for review; use publish_post to publish the draft.',
+                'description' => 'Publish pre-written content directly to WordPress. Use this when you have already drafted the post. QUALITY STANDARD: Before calling this tool, your draft must meet the following bar — (1) Title: specific, benefit-driven, 50–60 characters. (2) Content: minimum 600 words, structured with an intro, at least 3 H2 sections, and a conclusion; use concrete examples, not generic filler. (3) focus_keyword: always provide a target search phrase the post is optimised for. (4) excerpt: always provide a 140–160 character meta description that includes the focus keyword and compels a click. These fields are strongly recommended regardless of which SEO plugin (if any) is active — they improve discoverability and are stored as post meta. When publish is false the post is saved as a draft; use publish_post to publish it after review.',
                 'inputSchema' => [
                     'type'       => 'object',
                     'required'   => [ 'title', 'content' ],
                     'properties' => [
-                        'title'          => [ 'type' => 'string',  'description' => 'Post title' ],
-                        'content'        => [ 'type' => 'string',  'description' => 'Post body as HTML (use <p>, <h2>, <h3>, <ul>, <li>, <strong>, <em>)' ],
-                        'focus_keyword'  => [ 'type' => 'string',  'description' => 'SEO focus keyword for Yoast meta' ],
-                        'excerpt'        => [ 'type' => 'string',  'description' => 'Short excerpt / meta description (1–2 sentences)' ],
-                        'publish'        => [ 'type' => 'boolean', 'description' => 'true = publish immediately; false = save as draft for review', 'default' => true ],
+                        'title'          => [ 'type' => 'string',  'description' => 'Post title — specific and benefit-driven, 50–60 characters. Example: "7 Proven Ways to Cut Your Grocery Bill by 30%"' ],
+                        'content'        => [ 'type' => 'string',  'description' => 'Post body as HTML. Minimum 600 words. Structure: engaging intro paragraph, at least 3 <h2> sections with substantive content under each, and a conclusion. Use <p>, <h2>, <h3>, <ul>, <li>, <strong>, <em>. Avoid padding — every sentence should add value.' ],
+                        'focus_keyword'  => [ 'type' => 'string',  'description' => 'STRONGLY RECOMMENDED. The primary search phrase this post targets (e.g. "how to save money on groceries"). Used as SEO focus keyword. Should appear naturally in the title, first paragraph, and at least one H2.' ],
+                        'excerpt'        => [ 'type' => 'string',  'description' => 'STRONGLY RECOMMENDED. Meta description shown in search results — 140–160 characters, includes the focus keyword, and gives readers a clear reason to click. Example: "Discover 7 simple strategies to cut your grocery bill by 30% without sacrificing the foods you love."' ],
+                        'publish'        => [ 'type' => 'boolean', 'description' => 'true = publish immediately; false = save as draft for review (use publish_post to publish later)', 'default' => true ],
                         'featured_image_gen' => [ 'type' => 'boolean', 'description' => 'Trigger async AI featured image generation', 'default' => true ],
                     ],
                 ],
