@@ -147,7 +147,7 @@ class ILLE_PG_MCP {
             // ─── Content ───────────────────────────────────────────────────
             [
                 'name'        => 'generate_post',
-                'description' => 'Trigger the full AI post generation pipeline. The AI writes the title, content, excerpt, and SEO metadata. Optionally generates a featured image. Returns the new post ID and URL.',
+                'description' => 'Trigger the full AI post generation pipeline. The AI writes the title, content, excerpt, and SEO metadata. Optionally generates a featured image. When publish is false, saves as a draft and returns content_md for inline review — use publish_post to publish the draft after review.',
                 'inputSchema' => [
                     'type'       => 'object',
                     'properties' => [
@@ -161,7 +161,7 @@ class ILLE_PG_MCP {
 
             [
                 'name'        => 'create_post',
-                'description' => 'Publish pre-written content directly to WordPress — use this when you have already drafted the post in the LLM UI. Writes Yoast SEO metadata. Optionally triggers AI featured image generation.',
+                'description' => 'Publish pre-written content directly to WordPress — use this when you have already drafted the post in the LLM UI. Writes Yoast SEO metadata. Optionally triggers AI featured image generation. When publish is false, returns content_md for review; use publish_post to publish the draft.',
                 'inputSchema' => [
                     'type'       => 'object',
                     'required'   => [ 'title', 'content' ],
@@ -170,8 +170,33 @@ class ILLE_PG_MCP {
                         'content'        => [ 'type' => 'string',  'description' => 'Post body as HTML (use <p>, <h2>, <h3>, <ul>, <li>, <strong>, <em>)' ],
                         'focus_keyword'  => [ 'type' => 'string',  'description' => 'SEO focus keyword for Yoast meta' ],
                         'excerpt'        => [ 'type' => 'string',  'description' => 'Short excerpt / meta description (1–2 sentences)' ],
-                        'publish'        => [ 'type' => 'boolean', 'description' => 'true = publish immediately; false = save as draft', 'default' => true ],
+                        'publish'        => [ 'type' => 'boolean', 'description' => 'true = publish immediately; false = save as draft for review', 'default' => true ],
                         'featured_image' => [ 'type' => 'boolean', 'description' => 'Trigger async AI featured image generation', 'default' => true ],
+                    ],
+                ],
+            ],
+
+            [
+                'name'        => 'get_drafts',
+                'description' => 'List draft posts awaiting review. Returns each draft\'s content as markdown so you can review it inline. Use publish_post to publish a draft, optionally with edits.',
+                'inputSchema' => [
+                    'type'       => 'object',
+                    'properties' => [
+                        'limit' => [ 'type' => 'integer', 'description' => 'Max number of drafts to return (default 10, max 50)', 'default' => 10, 'minimum' => 1, 'maximum' => 50 ],
+                    ],
+                ],
+            ],
+
+            [
+                'name'        => 'publish_post',
+                'description' => 'Publish a draft post. Optionally supply updated title or HTML content to apply edits before publishing — use this when the user has reviewed the draft and made changes. Logs the publish action.',
+                'inputSchema' => [
+                    'type'       => 'object',
+                    'required'   => [ 'post_id' ],
+                    'properties' => [
+                        'post_id' => [ 'type' => 'integer', 'description' => 'ID of the draft post to publish — use get_drafts to find this', 'minimum' => 1 ],
+                        'title'   => [ 'type' => 'string',  'description' => 'Updated title (optional — leave empty to keep the existing title)' ],
+                        'content' => [ 'type' => 'string',  'description' => 'Updated post body as HTML (optional — leave empty to keep the existing content)' ],
                     ],
                 ],
             ],
@@ -380,6 +405,8 @@ class ILLE_PG_MCP {
             // ─── Content ───────────────────────────────────────────────────
             case 'generate_post':      return $this->tool_generate_post( $args, $actor_id );
             case 'create_post':        return $this->tool_create_post( $args, $actor_id );
+            case 'get_drafts':         return $this->tool_get_drafts( $args );
+            case 'publish_post':       return $this->tool_publish_post( $args, $actor_id );
 
             // ─── Endpoint ──────────────────────────────────────────────────
             case 'get_endpoint_info':  return $this->tool_get_endpoint_info();
@@ -434,12 +461,17 @@ class ILLE_PG_MCP {
             return $this->err( $post_id->get_error_message() );
         }
 
-        return $this->ok( [
+        $status = get_post_status( $post_id );
+        $data   = [
             'post_id'     => $post_id,
             'post_url'    => get_permalink( $post_id ),
-            'post_status' => get_post_status( $post_id ),
+            'post_status' => $status,
             'title'       => get_the_title( $post_id ),
-        ] );
+        ];
+        if ( $status === 'draft' ) {
+            $data['content_md'] = $this->html_to_markdown( get_post_field( 'post_content', $post_id ) );
+        }
+        return $this->ok( $data );
     }
 
     private function tool_create_post( array $args, int $actor_id ): array {
@@ -458,12 +490,104 @@ class ILLE_PG_MCP {
             return $this->err( $post_id->get_error_message() );
         }
 
+        $status = get_post_status( $post_id );
+        $data   = [
+            'post_id'     => $post_id,
+            'post_url'    => get_permalink( $post_id ),
+            'post_status' => $status,
+            'title'       => get_the_title( $post_id ),
+        ];
+        if ( $status === 'draft' ) {
+            $data['content_md'] = $this->html_to_markdown( get_post_field( 'post_content', $post_id ) );
+        }
+        return $this->ok( $data );
+    }
+
+    private function tool_get_drafts( array $args ): array {
+        $limit = min( 50, max( 1, (int) ( $args['limit'] ?? 10 ) ) );
+
+        $posts = get_posts( [
+            'post_status'    => 'draft',
+            'post_type'      => 'post',
+            'posts_per_page' => $limit,
+            'orderby'        => 'date',
+            'order'          => 'DESC',
+        ] );
+
+        $drafts = [];
+        foreach ( $posts as $post ) {
+            $drafts[] = [
+                'post_id'       => $post->ID,
+                'title'         => $post->post_title,
+                'focus_keyword' => get_post_meta( $post->ID, '_yoast_wpseo_focuskw', true ) ?: null,
+                'excerpt'       => $post->post_excerpt ?: null,
+                'created'       => $post->post_date,
+                'edit_url'      => get_edit_post_link( $post->ID, 'raw' ),
+                'content_md'    => $this->html_to_markdown( $post->post_content ),
+            ];
+        }
+
+        return $this->ok( [ 'drafts' => $drafts, 'count' => count( $drafts ) ] );
+    }
+
+    private function tool_publish_post( array $args, int $actor_id ): array {
+        $post_id = (int) ( $args['post_id'] ?? 0 );
+        $post    = get_post( $post_id );
+
+        if ( ! $post || $post->post_type !== 'post' ) {
+            return $this->err( "Post {$post_id} not found." );
+        }
+
+        if ( $post->post_status !== 'draft' ) {
+            return $this->err( "Post {$post_id} is not a draft (current status: {$post->post_status})." );
+        }
+
+        $update = [ 'ID' => $post_id, 'post_status' => 'publish' ];
+
+        if ( ! empty( $args['title'] ) ) {
+            $update['post_title'] = sanitize_text_field( $args['title'] );
+        }
+        if ( ! empty( $args['content'] ) ) {
+            $update['post_content'] = wp_kses_post( $args['content'] );
+        }
+
+        $result = wp_update_post( $update, true );
+        if ( is_wp_error( $result ) ) {
+            return $this->err( $result->get_error_message() );
+        }
+
+        ILLE_PG_Logger::log( ILLE_PG_Logger::EVENT_POST_CREATED, [
+            'post_id'  => $post_id,
+            'title'    => get_the_title( $post_id ),
+            'action'   => 'draft_published',
+            'post_url' => get_permalink( $post_id ),
+        ], ILLE_PG_Logger::TRIGGER_ENDPOINT, $actor_id );
+
         return $this->ok( [
             'post_id'     => $post_id,
             'post_url'    => get_permalink( $post_id ),
             'post_status' => get_post_status( $post_id ),
             'title'       => get_the_title( $post_id ),
         ] );
+    }
+
+    private function html_to_markdown( string $html ): string {
+        $md = $html;
+        $md = preg_replace( '/<h2[^>]*>(.*?)<\/h2>/si',   "\n## $1\n",   $md );
+        $md = preg_replace( '/<h3[^>]*>(.*?)<\/h3>/si',   "\n### $1\n",  $md );
+        $md = preg_replace( '/<h4[^>]*>(.*?)<\/h4>/si',   "\n#### $1\n", $md );
+        $md = preg_replace( '/<p[^>]*>(.*?)<\/p>/si',     "\n$1\n",      $md );
+        $md = preg_replace( '/<li[^>]*>(.*?)<\/li>/si',   "\n- $1",      $md );
+        $md = preg_replace( '/<ul[^>]*>|<\/ul>|<ol[^>]*>|<\/ol>/si', "\n", $md );
+        $md = preg_replace( '/<strong[^>]*>(.*?)<\/strong>/si', "**$1**", $md );
+        $md = preg_replace( '/<b[^>]*>(.*?)<\/b>/si',          "**$1**", $md );
+        $md = preg_replace( '/<em[^>]*>(.*?)<\/em>/si',        "*$1*",   $md );
+        $md = preg_replace( '/<i[^>]*>(.*?)<\/i>/si',          "*$1*",   $md );
+        $md = preg_replace( '/<a[^>]*href=["\']([^"\']+)["\'][^>]*>(.*?)<\/a>/si', "[$2]($1)", $md );
+        $md = strip_tags( $md );
+        $md = html_entity_decode( $md, ENT_QUOTES | ENT_HTML5, 'UTF-8' );
+        $md = preg_replace( '/\n{3,}/', "\n\n", trim( $md ) );
+        return $md;
     }
 
     // =========================================================================
