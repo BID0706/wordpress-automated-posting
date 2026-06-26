@@ -20,12 +20,15 @@
         history.replaceState( null, '', '#' + target );
     });
 
-    // Activate tab from URL hash on page load
+    // Activate tab from URL hash, then dismiss the splash screen
     (function () {
         const hash = location.hash.replace( '#', '' );
         if ( hash && $('[data-tab="' + hash + '"]').length ) {
             activateTab( hash );
         }
+        var $splash = $('#ille-pg-splash');
+        $splash.addClass('ille-pg-splash--hidden');
+        setTimeout( function () { $splash.remove(); }, 200 );
     })();
 
     // =========================================================================

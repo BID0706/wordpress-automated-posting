@@ -1241,3 +1241,33 @@
 .ille-pg-table tr:last-child td { border-bottom: none; }
 .ille-pg-table th:last-child,
 .ille-pg-table td:last-child { width: 80px; text-align: right; white-space: nowrap; word-break: normal; }
+
+/* Settings page splash screen */
+.ille-pg-splash {
+    position: fixed;
+    inset: 0;
+    background: #f0f0f1;
+    z-index: 99999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: opacity .15s ease;
+}
+.ille-pg-splash.ille-pg-splash--hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+.ille-pg-splash__dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--ille-accent, #2271b1);
+    animation: ille-pg-splash-pulse 1s ease-in-out infinite;
+}
+.ille-pg-splash__dot:nth-child(2) { animation-delay: .15s; }
+.ille-pg-splash__dot:nth-child(3) { animation-delay: .3s; }
+@keyframes ille-pg-splash-pulse {
+    0%, 100% { opacity: .25; transform: scale(.85); }
+    50%       { opacity: 1;   transform: scale(1);   }
+}
