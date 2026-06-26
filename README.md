@@ -4,6 +4,7 @@ A WordPress plugin that automates SEO-optimized blog post creation via an admin 
 
 Built for [ille.com.ng](https://ille.com.ng).
 Developer: Ibiso Barimalaa
+
 ---
 
 ## Table of Contents
