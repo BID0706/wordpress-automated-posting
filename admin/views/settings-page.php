@@ -807,6 +807,22 @@ while ( count( $schedules ) < ILLE_PG_Settings::MAX_SCHEDULES ) {
         </div>
         <?php endif; ?>
 
+        <?php /* Inline tab-init: runs synchronously during parse so the correct
+                  tab is active before the first paint — no flash of default tab. */ ?>
+        <script>
+        (function () {
+            var hash = location.hash.replace( '#', '' );
+            if ( ! hash ) return;
+            var tab   = document.querySelector( '[data-tab="'   + hash + '"]' );
+            var panel = document.querySelector( '[data-panel="' + hash + '"]' );
+            if ( ! tab || ! panel ) return;
+            document.querySelectorAll( '.ille-pg-tab' ).forEach( function (el) { el.classList.remove( 'active' ); } );
+            document.querySelectorAll( '.ille-pg-tab-panel' ).forEach( function (el) { el.classList.remove( 'active' ); } );
+            tab.classList.add( 'active' );
+            panel.classList.add( 'active' );
+        })();
+        </script>
+
         <!-- Save Button -->
         <div class="ille-pg-settings-footer">
             <button type="submit" id="ille-pg-save" class="ille-pg-btn ille-pg-btn--primary">
