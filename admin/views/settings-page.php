@@ -307,6 +307,46 @@ while ( count( $schedules ) < ILLE_PG_Settings::MAX_SCHEDULES ) {
 
                 </div>
             </div>
+
+            <?php /* ---- OAuth Mode ---- */ ?>
+            <?php
+            $oauth_mode    = ILLE_PG_Settings::get_oauth_mode();
+            $oauth_clients = ILLE_PG_Settings::get_oauth_clients();
+            ?>
+            <div class="ille-pg-card">
+                <div class="ille-pg-card__header"><h2>OAuth 2.0</h2></div>
+                <p class="ille-pg-hint">Enable OAuth so AI assistants like ChatGPT and Groq can authenticate with the MCP server.</p>
+
+                <div class="ille-pg-field">
+                    <label class="ille-pg-label">OAuth Mode</label>
+                    <div class="ille-pg-radios" id="ille-oauth-mode-radios">
+                        <?php foreach ( [ 'disabled' => 'Disabled — X-API-Key only', 'built_in' => 'Built-in — Plugin runs its own OAuth server', 'external' => 'External — Defer to an installed WordPress OAuth plugin' ] as $val => $lbl ) : ?>
+                        <label class="ille-pg-radio-label">
+                            <input type="radio"
+                                name="settings[<?php echo esc_attr( ILLE_PG_Settings::KEY_OAUTH_MODE ); ?>]"
+                                value="<?php echo esc_attr( $val ); ?>"
+                                <?php checked( $oauth_mode, $val ); ?> />
+                            <?php echo esc_html( $lbl ); ?>
+                        </label>
+                        <?php endforeach; ?>
+                    </div>
+                    <div class="ille-pg-oauth-hint" id="ille-oauth-hint-disabled" <?php echo $oauth_mode !== 'disabled'  ? 'hidden' : ''; ?>>
+                        <p class="ille-pg-hint">Only X-API-Key authentication is accepted. OAuth is off.</p>
+                    </div>
+                    <div class="ille-pg-oauth-hint" id="ille-oauth-hint-built_in" <?php echo $oauth_mode !== 'built_in' ? 'hidden' : ''; ?>>
+                        <p class="ille-pg-hint">Plugin runs its own OAuth 2.0 server. Discovery document: <code><?php echo esc_url( get_bloginfo( 'url' ) . '/.well-known/oauth-authorization-server' ); ?></code></p>
+                    </div>
+                    <div class="ille-pg-oauth-hint" id="ille-oauth-hint-external" <?php echo $oauth_mode !== 'external' ? 'hidden' : ''; ?>>
+                        <p class="ille-pg-hint">Bearer tokens issued by your active WordPress OAuth plugin are accepted automatically. No extra configuration needed.</p>
+                    </div>
+                </div>
+            </div>
+
+            <?php /* ---- OAuth Clients (built-in mode only) ---- */ ?>
+            <div id="ille-oauth-clients-section" <?php echo $oauth_mode !== 'built_in' ? 'hidden' : ''; ?>>
+                <?php require ILLE_PG_DIR . 'admin/views/oauth-clients-tab.php'; ?>
+            </div>
+
         </div>
 
         <!-- ================================================================

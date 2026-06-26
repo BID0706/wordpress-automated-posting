@@ -18,6 +18,8 @@ class ILLE_PG_Settings {
     const KEY_IMAGE_MODEL          = 'ille_pg_image_model';
     const KEY_POLLINATIONS_KEY     = 'ille_pg_pollinations_api_key';
     const KEY_COVERED_TOPICS_COUNT = 'ille_pg_covered_topics_count';
+    const KEY_OAUTH_MODE           = 'ille_pg_oauth_mode';    // 'disabled' | 'built_in' | 'external'
+    const KEY_OAUTH_CLIENTS        = 'ille_pg_oauth_clients';
 
     const MAX_SCHEDULES = 5;
 
@@ -155,6 +157,33 @@ class ILLE_PG_Settings {
             'no_model_configured',
             'No AI model API key is configured. Go to Settings → AI Models and add a key.'
         );
+    }
+
+    // -------------------------------------------------------------------------
+    // OAuth helpers
+    // -------------------------------------------------------------------------
+
+    public static function get_oauth_mode(): string {
+        $mode = (string) self::get( self::KEY_OAUTH_MODE, 'disabled' );
+        return in_array( $mode, [ 'disabled', 'built_in', 'external' ], true ) ? $mode : 'disabled';
+    }
+
+    public static function get_oauth_clients(): array {
+        $clients = self::get( self::KEY_OAUTH_CLIENTS, [] );
+        return is_array( $clients ) ? $clients : [];
+    }
+
+    public static function save_oauth_clients( array $clients ): bool {
+        return self::set( self::KEY_OAUTH_CLIENTS, $clients );
+    }
+
+    public static function get_oauth_client( string $client_id ): array|false {
+        foreach ( self::get_oauth_clients() as $c ) {
+            if ( isset( $c['client_id'] ) && hash_equals( $c['client_id'], $client_id ) ) {
+                return $c;
+            }
+        }
+        return false;
     }
 
     public static function get_covered_topics_count(): int {

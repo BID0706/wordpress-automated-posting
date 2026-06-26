@@ -21,11 +21,15 @@ require_once ILLE_PG_DIR . 'includes/class-logger.php';
 require_once ILLE_PG_DIR . 'includes/class-ai-generator.php';
 require_once ILLE_PG_DIR . 'includes/class-post-creator.php';
 require_once ILLE_PG_DIR . 'includes/class-scheduler.php';
+require_once ILLE_PG_DIR . 'includes/class-oauth.php';
 require_once ILLE_PG_DIR . 'includes/class-rest-api.php';
 require_once ILLE_PG_DIR . 'includes/class-mcp.php';
 require_once ILLE_PG_DIR . 'includes/class-admin.php';
 
 function ille_pg_init() {
+    if ( ILLE_PG_Settings::get_oauth_mode() === 'built_in' ) {
+        new ILLE_PG_OAuth();
+    }
     new ILLE_PG_REST_API();
     new ILLE_PG_MCP();
     new ILLE_PG_Scheduler();
@@ -44,6 +48,7 @@ function ille_pg_activate() {
         update_option( ILLE_PG_Settings::KEY_API_KEY, wp_generate_password( 32, false ) );
     }
     ILLE_PG_Scheduler::register_cron_schedules();
+    flush_rewrite_rules(); // ensure .well-known rewrite rule activates immediately
 }
 
 register_deactivation_hook( __FILE__, 'ille_pg_deactivate' );

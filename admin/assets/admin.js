@@ -908,4 +908,115 @@
     }
     bindRemove();
 
+    // =========================================================================
+    // OAuth mode toggle
+    // =========================================================================
+
+    $('#ille-oauth-mode-radios input[type="radio"]').on('change', function () {
+        var mode = $(this).val();
+        $('.ille-pg-oauth-hint').attr('hidden', true);
+        $('#ille-oauth-hint-' + mode).removeAttr('hidden');
+        if (mode === 'built_in') {
+            $('#ille-oauth-clients-section').removeAttr('hidden');
+        } else {
+            $('#ille-oauth-clients-section').attr('hidden', true);
+        }
+    });
+
+    // =========================================================================
+    // OAuth client registration
+    // =========================================================================
+
+    $('#ille-oauth-register-btn').on('click', function () {
+        var name = $.trim($('#ille-oauth-new-name').val());
+        var uris = $.trim($('#ille-oauth-new-uris').val());
+
+        if (!name || !uris) {
+            $('#ille-oauth-register-msg').text('Name and at least one redirect URI are required.');
+            return;
+        }
+
+        var isPublic = $('#ille-oauth-new-public').is(':checked');
+        var $btn = $(this).prop('disabled', true).text('Registering…');
+        $('#ille-oauth-register-msg').text('');
+        $('#ille-oauth-new-client-notice').attr('hidden', true);
+
+        $.post(ILLE_PG.ajax_url, {
+            action:        'ille_pg_oauth_register_client',
+            nonce:         ILLE_PG.nonce,
+            name:          name,
+            redirect_uris: uris,
+            public_client: isPublic ? '1' : '',
+        }, function (res) {
+            $btn.prop('disabled', false).text('Register Client');
+            if (!res.success) {
+                $('#ille-oauth-register-msg').text(res.data && res.data.message ? res.data.message : 'Error registering client.');
+                return;
+            }
+            var d = res.data;
+            $('#ille-oauth-new-client-id').text(d.client_id);
+            if (d.public_client) {
+                $('#ille-oauth-notice-msg').text('Public client — no secret needed. Set token auth method to "none" in your OAuth app.');
+                $('#ille-oauth-secret-row').attr('hidden', true);
+            } else {
+                $('#ille-oauth-notice-msg').text('Copy the secret now — it will not be shown again.');
+                $('#ille-oauth-new-client-secret').text(d.client_secret);
+                $('#ille-oauth-secret-row').removeAttr('hidden');
+            }
+            $('#ille-oauth-new-client-notice').removeAttr('hidden');
+            $('#ille-oauth-new-name').val('');
+            $('#ille-oauth-new-uris').val('');
+            $('#ille-oauth-new-public').prop('checked', false);
+            $('#ille-oauth-no-clients').remove();
+
+            // Add row to table
+            var $tbody = $('#ille-oauth-clients-table tbody');
+            if (!$tbody.length) {
+                var $table = $('<table class="ille-pg-table" id="ille-oauth-clients-table"><thead><tr><th>Name</th><th>Client ID</th><th>Type</th><th>Redirect URIs</th><th>Created</th><th></th></tr></thead><tbody></tbody></table>');
+                $('#ille-oauth-clients-list').append($table);
+                $tbody = $table.find('tbody');
+            }
+            var uriLines = uris.split('\n').filter(Boolean).map(function(u) {
+                return '<div><code>' + $('<span>').text($.trim(u)).html() + '</code></div>';
+            }).join('');
+            var clientType = d.public_client ? 'Public' : 'Confidential';
+            var today = new Date().toLocaleDateString('en-US', {year:'numeric',month:'short',day:'numeric'});
+            $tbody.append(
+                '<tr data-client-id="' + $('<span>').text(d.client_id).html() + '">' +
+                '<td>' + $('<span>').text(d.name).html() + '</td>' +
+                '<td><code>' + $('<span>').text(d.client_id).html() + '</code></td>' +
+                '<td>' + clientType + '</td>' +
+                '<td>' + uriLines + '</td>' +
+                '<td>' + today + '</td>' +
+                '<td><button type="button" class="ille-pg-btn ille-pg-btn--sm ille-pg-btn--danger ille-oauth-revoke-btn" data-client-id="' + $('<span>').text(d.client_id).html() + '" data-client-name="' + $('<span>').text(d.name).html() + '">Revoke</button></td>' +
+                '</tr>'
+            );
+        });
+    });
+
+    // =========================================================================
+    // OAuth client revocation
+    // =========================================================================
+
+    $(document).on('click', '.ille-oauth-revoke-btn', function () {
+        var clientId   = $(this).data('client-id');
+        var clientName = $(this).data('client-name');
+        if (!confirm('Revoke OAuth client "' + clientName + '"? This will invalidate all tokens issued to this client immediately.')) {
+            return;
+        }
+        var $row = $(this).closest('tr');
+        $.post(ILLE_PG.ajax_url, {
+            action:    'ille_pg_oauth_revoke_client',
+            nonce:     ILLE_PG.nonce,
+            client_id: clientId,
+        }, function (res) {
+            if (res.success) {
+                $row.remove();
+                if (!$('#ille-oauth-clients-table tbody tr').length) {
+                    $('#ille-oauth-clients-table').replaceWith('<p class="ille-pg-hint" id="ille-oauth-no-clients">No OAuth clients registered yet.</p>');
+                }
+            }
+        });
+    });
+
 })(jQuery);

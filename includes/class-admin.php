@@ -15,7 +15,9 @@ class ILLE_PG_Admin {
         add_action( 'wp_ajax_ille_pg_log_truncate',   [ $this, 'ajax_log_truncate' ] );
         add_action( 'wp_ajax_ille_pg_log_delete',     [ $this, 'ajax_log_delete' ] );
         add_action( 'wp_ajax_ille_pg_check_keyword',  [ $this, 'ajax_check_keyword' ] );
-        add_action( 'wp_ajax_ille_pg_list_keys',      [ $this, 'ajax_list_keys' ] );
+        add_action( 'wp_ajax_ille_pg_list_keys',             [ $this, 'ajax_list_keys' ] );
+        add_action( 'wp_ajax_ille_pg_oauth_register_client', [ $this, 'ajax_oauth_register_client' ] );
+        add_action( 'wp_ajax_ille_pg_oauth_revoke_client',   [ $this, 'ajax_oauth_revoke_client' ] );
         add_action( 'admin_init', [ $this, 'maybe_flush_rewrite_rules' ] );
     }
 
@@ -159,6 +161,7 @@ class ILLE_PG_Admin {
             ILLE_PG_Settings::KEY_ACTIVE_MODEL,
             ILLE_PG_Settings::KEY_IMAGE_MODEL,
             ILLE_PG_Settings::KEY_CUSTOM_ENDPOINT,
+            ILLE_PG_Settings::KEY_OAUTH_MODE,
         ];
 
         $endpoint_changed = isset( $fields[ ILLE_PG_Settings::KEY_CUSTOM_ENDPOINT ] )
@@ -517,5 +520,85 @@ class ILLE_PG_Admin {
             delete_option( 'ille_pg_needs_flush' );
             flush_rewrite_rules();
         }
+    }
+
+    // -------------------------------------------------------------------------
+    // OAuth client management
+    // -------------------------------------------------------------------------
+
+    public function ajax_oauth_register_client() {
+        check_ajax_referer( 'ille_pg_nonce', 'nonce' );
+
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_send_json_error( [ 'message' => 'Permission denied.' ], 403 );
+        }
+
+        $name          = sanitize_text_field( $_POST['name'] ?? '' );
+        $redirect_uris = array_filter( array_map( 'esc_url_raw', explode( "\n", $_POST['redirect_uris'] ?? '' ) ) );
+
+        if ( empty( $name ) ) {
+            wp_send_json_error( [ 'message' => 'Client name is required.' ] );
+        }
+
+        if ( empty( $redirect_uris ) ) {
+            wp_send_json_error( [ 'message' => 'At least one redirect URI is required.' ] );
+        }
+
+        foreach ( $redirect_uris as $uri ) {
+            $parsed = wp_parse_url( $uri );
+            $scheme = $parsed['scheme'] ?? '';
+            $host   = $parsed['host'] ?? '';
+            if ( $scheme !== 'https' && ! ( $scheme === 'http' && $host === 'localhost' ) ) {
+                wp_send_json_error( [ 'message' => "Invalid redirect URI (must be HTTPS): {$uri}" ] );
+            }
+        }
+
+        $is_public = ! empty( $_POST['public_client'] );
+
+        $client_id     = 'ille_' . bin2hex( random_bytes( 8 ) );
+        $client_secret = $is_public ? null : bin2hex( random_bytes( 32 ) );
+
+        $clients   = ILLE_PG_Settings::get_oauth_clients();
+        $clients[] = [
+            'client_id'          => $client_id,
+            'client_secret_hash' => $is_public ? '' : password_hash( $client_secret, PASSWORD_BCRYPT ),
+            'public_client'      => $is_public,
+            'name'               => $name,
+            'redirect_uris'      => array_values( $redirect_uris ),
+            'created_at'         => gmdate( 'c' ),
+            'created_by'         => get_current_user_id(),
+        ];
+        ILLE_PG_Settings::save_oauth_clients( $clients );
+
+        $response = [
+            'client_id'     => $client_id,
+            'name'          => $name,
+            'public_client' => $is_public,
+        ];
+        if ( ! $is_public ) {
+            $response['client_secret'] = $client_secret; // shown once, never stored
+        }
+        wp_send_json_success( $response );
+    }
+
+    public function ajax_oauth_revoke_client() {
+        check_ajax_referer( 'ille_pg_nonce', 'nonce' );
+
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_send_json_error( [ 'message' => 'Permission denied.' ], 403 );
+        }
+
+        $client_id = sanitize_text_field( $_POST['client_id'] ?? '' );
+        if ( empty( $client_id ) ) {
+            wp_send_json_error( [ 'message' => 'client_id is required.' ] );
+        }
+
+        $clients = array_filter(
+            ILLE_PG_Settings::get_oauth_clients(),
+            fn( $c ) => ! hash_equals( $c['client_id'], $client_id )
+        );
+        ILLE_PG_Settings::save_oauth_clients( array_values( $clients ) );
+
+        wp_send_json_success( [ 'revoked' => $client_id ] );
     }
 }

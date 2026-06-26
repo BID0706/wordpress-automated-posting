@@ -11,6 +11,10 @@ class ILLE_PG_Logger {
     const EVENT_LOG_DELETED      = 'log_deleted';
     const EVENT_ENDPOINT_TESTED  = 'endpoint_tested';
     const EVENT_ENDPOINT_ERROR   = 'endpoint_error';
+    const EVENT_OAUTH_CODE       = 'oauth_code_issued';
+    const EVENT_OAUTH_TOKEN      = 'oauth_token_issued';
+    const EVENT_OAUTH_REFRESH    = 'oauth_token_refreshed';
+    const EVENT_OAUTH_FAILED     = 'oauth_auth_failed';
 
     const TRIGGER_MANUAL   = 'manual';
     const TRIGGER_ENDPOINT = 'endpoint';
