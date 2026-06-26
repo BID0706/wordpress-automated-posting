@@ -201,6 +201,21 @@ class ILLE_PG_MCP {
                 ],
             ],
 
+            [
+                'name'        => 'upload_image',
+                'description' => 'Upload an image to the WordPress media library from a public URL or base64-encoded data. Optionally set it as the featured image for a post. Use when the user has generated an image in an external LLM or has a local file.',
+                'inputSchema' => [
+                    'type'       => 'object',
+                    'properties' => [
+                        'url'      => [ 'type' => 'string',  'description' => 'Public URL of the image to download and import' ],
+                        'base64'   => [ 'type' => 'string',  'description' => 'Base64-encoded image bytes' ],
+                        'filename' => [ 'type' => 'string',  'description' => 'Filename with extension, required with base64 (e.g. "image.png")' ],
+                        'alt_text' => [ 'type' => 'string',  'description' => 'Alt text / description for the media attachment' ],
+                        'post_id'  => [ 'type' => 'integer', 'description' => 'Post ID to set this image as featured image (optional)', 'minimum' => 1 ],
+                    ],
+                ],
+            ],
+
             // ─── Endpoint ──────────────────────────────────────────────────
             [
                 'name'        => 'get_endpoint_info',
@@ -407,6 +422,7 @@ class ILLE_PG_MCP {
             case 'create_post':        return $this->tool_create_post( $args, $actor_id );
             case 'get_drafts':         return $this->tool_get_drafts( $args );
             case 'publish_post':       return $this->tool_publish_post( $args, $actor_id );
+            case 'upload_image':       return $this->tool_upload_image( $args, $actor_id );
 
             // ─── Endpoint ──────────────────────────────────────────────────
             case 'get_endpoint_info':  return $this->tool_get_endpoint_info();
@@ -568,6 +584,71 @@ class ILLE_PG_MCP {
             'post_url'    => get_permalink( $post_id ),
             'post_status' => get_post_status( $post_id ),
             'title'       => get_the_title( $post_id ),
+        ] );
+    }
+
+    private function tool_upload_image( array $args, int $actor_id ): array {
+        require_once ABSPATH . 'wp-admin/includes/media.php';
+        require_once ABSPATH . 'wp-admin/includes/file.php';
+        require_once ABSPATH . 'wp-admin/includes/image.php';
+
+        $has_url    = ! empty( $args['url'] );
+        $has_base64 = ! empty( $args['base64'] );
+
+        if ( $has_url === $has_base64 ) {
+            return $this->err( 'Provide exactly one of "url" or "base64".' );
+        }
+
+        $alt_text = sanitize_text_field( $args['alt_text'] ?? '' );
+        $post_id  = (int) ( $args['post_id'] ?? 0 );
+
+        if ( $has_url ) {
+            $url     = esc_url_raw( $args['url'] );
+            $tmpfile = download_url( $url, 30 );
+            if ( is_wp_error( $tmpfile ) ) {
+                return $this->err( 'Download failed: ' . $tmpfile->get_error_message() );
+            }
+            $filename   = sanitize_file_name( basename( wp_parse_url( $url, PHP_URL_PATH ) ) ?: 'image.jpg' );
+            $file_array = [ 'name' => $filename, 'tmp_name' => $tmpfile ];
+            $att_id     = media_handle_sideload( $file_array, 0, $alt_text );
+            @unlink( $tmpfile );
+        } else {
+            $filename   = sanitize_file_name( $args['filename'] ?? 'image.jpg' );
+            $tmpfile    = tempnam( sys_get_temp_dir(), 'ille-pg-' );
+            // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents
+            file_put_contents( $tmpfile, base64_decode( $args['base64'] ) );
+            $file_array = [ 'name' => $filename, 'tmp_name' => $tmpfile ];
+            $att_id     = media_handle_sideload( $file_array, 0, $alt_text );
+            @unlink( $tmpfile );
+        }
+
+        if ( is_wp_error( $att_id ) ) {
+            return $this->err( 'Upload failed: ' . $att_id->get_error_message() );
+        }
+
+        if ( $alt_text ) {
+            update_post_meta( $att_id, '_wp_attachment_image_alt', $alt_text );
+        }
+
+        $set_as_featured = false;
+        if ( $post_id && get_post( $post_id ) ) {
+            set_post_thumbnail( $post_id, $att_id );
+            $set_as_featured = true;
+        }
+
+        ILLE_PG_Logger::log( ILLE_PG_Logger::EVENT_POST_CREATED, [
+            'action'          => 'image_uploaded',
+            'attachment_id'   => $att_id,
+            'filename'        => $filename,
+            'set_as_featured' => $set_as_featured,
+            'post_id'         => $post_id ?: null,
+        ], ILLE_PG_Logger::TRIGGER_ENDPOINT, $actor_id );
+
+        return $this->ok( [
+            'attachment_id'   => $att_id,
+            'url'             => wp_get_attachment_url( $att_id ),
+            'set_as_featured' => $set_as_featured,
+            'post_id'         => $post_id ?: null,
         ] );
     }
 
