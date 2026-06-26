@@ -936,6 +936,7 @@
             return;
         }
 
+        var isPublic = $('#ille-oauth-new-public').is(':checked');
         var $btn = $(this).prop('disabled', true).text('Registering…');
         $('#ille-oauth-register-msg').text('');
         $('#ille-oauth-new-client-notice').attr('hidden', true);
@@ -945,6 +946,7 @@
             nonce:         ILLE_PG.nonce,
             name:          name,
             redirect_uris: uris,
+            public_client: isPublic ? '1' : '',
         }, function (res) {
             $btn.prop('disabled', false).text('Register Client');
             if (!res.success) {
@@ -953,27 +955,37 @@
             }
             var d = res.data;
             $('#ille-oauth-new-client-id').text(d.client_id);
-            $('#ille-oauth-new-client-secret').text(d.client_secret);
+            if (d.public_client) {
+                $('#ille-oauth-notice-msg').text('Public client — no secret needed. Set token auth method to "none" in your OAuth app.');
+                $('#ille-oauth-secret-row').attr('hidden', true);
+            } else {
+                $('#ille-oauth-notice-msg').text('Copy the secret now — it will not be shown again.');
+                $('#ille-oauth-new-client-secret').text(d.client_secret);
+                $('#ille-oauth-secret-row').removeAttr('hidden');
+            }
             $('#ille-oauth-new-client-notice').removeAttr('hidden');
             $('#ille-oauth-new-name').val('');
             $('#ille-oauth-new-uris').val('');
+            $('#ille-oauth-new-public').prop('checked', false);
             $('#ille-oauth-no-clients').remove();
 
             // Add row to table
             var $tbody = $('#ille-oauth-clients-table tbody');
             if (!$tbody.length) {
-                var $table = $('<table class="ille-pg-table" id="ille-oauth-clients-table"><thead><tr><th>Name</th><th>Client ID</th><th>Redirect URIs</th><th>Created</th><th></th></tr></thead><tbody></tbody></table>');
+                var $table = $('<table class="ille-pg-table" id="ille-oauth-clients-table"><thead><tr><th>Name</th><th>Client ID</th><th>Type</th><th>Redirect URIs</th><th>Created</th><th></th></tr></thead><tbody></tbody></table>');
                 $('#ille-oauth-clients-list').append($table);
                 $tbody = $table.find('tbody');
             }
             var uriLines = uris.split('\n').filter(Boolean).map(function(u) {
                 return '<div><code>' + $('<span>').text($.trim(u)).html() + '</code></div>';
             }).join('');
+            var clientType = d.public_client ? 'Public' : 'Confidential';
             var today = new Date().toLocaleDateString('en-US', {year:'numeric',month:'short',day:'numeric'});
             $tbody.append(
                 '<tr data-client-id="' + $('<span>').text(d.client_id).html() + '">' +
                 '<td>' + $('<span>').text(d.name).html() + '</td>' +
                 '<td><code>' + $('<span>').text(d.client_id).html() + '</code></td>' +
+                '<td>' + clientType + '</td>' +
                 '<td>' + uriLines + '</td>' +
                 '<td>' + today + '</td>' +
                 '<td><button type="button" class="ille-pg-btn ille-pg-btn--sm ille-pg-btn--danger ille-oauth-revoke-btn" data-client-id="' + $('<span>').text(d.client_id).html() + '" data-client-name="' + $('<span>').text(d.name).html() + '">Revoke</button></td>' +

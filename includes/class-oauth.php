@@ -296,8 +296,12 @@ class ILLE_PG_OAuth {
             $pkce_verified = true;
         }
 
-        // Client authentication: require client_secret unless PKCE was used (public client)
-        if ( ! $pkce_verified ) {
+        // Client authentication:
+        // - Public clients (no secret hash stored): skip secret check; auth code + redirect_uri match is sufficient.
+        // - Confidential clients that used PKCE: PKCE already verified; skip secret (still secure).
+        // - Confidential clients without PKCE: must provide correct client_secret.
+        $is_public_client = empty( $client['client_secret_hash'] );
+        if ( ! $is_public_client && ! $pkce_verified ) {
             if ( ! password_verify( $client_secret, $client['client_secret_hash'] ) ) {
                 return $this->token_error( 'invalid_client', 'Invalid client credentials.' );
             }
@@ -316,9 +320,12 @@ class ILLE_PG_OAuth {
             return $this->token_error( 'invalid_client', 'Unknown client_id.' );
         }
 
-        // Allow refresh without client_secret if client was originally authorized via PKCE
-        if ( ! empty( $client_secret ) && ! password_verify( $client_secret, $client['client_secret_hash'] ) ) {
-            return $this->token_error( 'invalid_client', 'Invalid client credentials.' );
+        // Public clients have no secret; confidential clients must provide a valid one
+        $is_public_client = empty( $client['client_secret_hash'] );
+        if ( ! $is_public_client ) {
+            if ( ! empty( $client_secret ) && ! password_verify( $client_secret, $client['client_secret_hash'] ) ) {
+                return $this->token_error( 'invalid_client', 'Invalid client credentials.' );
+            }
         }
 
         $refresh_key = 'ille_pg_refresh_' . hash( 'sha256', $refresh_token );

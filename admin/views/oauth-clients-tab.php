@@ -20,6 +20,7 @@ if ( ! defined( 'ABSPATH' ) ) exit;
                 <tr>
                     <th>Name</th>
                     <th>Client ID</th>
+                    <th>Type</th>
                     <th>Redirect URIs</th>
                     <th>Created</th>
                     <th></th>
@@ -32,6 +33,7 @@ if ( ! defined( 'ABSPATH' ) ) exit;
                 <tr data-client-id="<?php echo esc_attr( $client['client_id'] ); ?>">
                     <td><?php echo esc_html( $client['name'] ); ?></td>
                     <td><code><?php echo esc_html( $client['client_id'] ); ?></code></td>
+                    <td><?php echo ! empty( $client['public_client'] ) ? 'Public' : 'Confidential'; ?></td>
                     <td>
                         <?php foreach ( $client['redirect_uris'] as $uri ) : ?>
                             <div><code><?php echo esc_html( $uri ); ?></code></div>
@@ -55,7 +57,7 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 
     <?php /* One-time secret notice — populated by JS after registration */ ?>
     <div id="ille-oauth-new-client-notice" class="ille-pg-notice ille-pg-notice--success" hidden>
-        <strong>Client registered.</strong> Copy the secret now — it will not be shown again.<br>
+        <strong id="ille-oauth-notice-title">Client registered.</strong> <span id="ille-oauth-notice-msg">Copy the secret now — it will not be shown again.</span><br>
         <div class="ille-pg-field" style="margin-top:.75rem">
             <label class="ille-pg-label">Client ID</label>
             <div class="ille-pg-copy-row">
@@ -63,7 +65,7 @@ if ( ! defined( 'ABSPATH' ) ) exit;
                 <button type="button" class="ille-pg-btn ille-pg-btn--sm ille-pg-copy-btn" data-copy="ille-oauth-new-client-id">Copy</button>
             </div>
         </div>
-        <div class="ille-pg-field">
+        <div class="ille-pg-field" id="ille-oauth-secret-row">
             <label class="ille-pg-label">Client Secret</label>
             <div class="ille-pg-copy-row">
                 <code class="ille-pg-code" id="ille-oauth-new-client-secret"></code>
@@ -88,6 +90,13 @@ if ( ! defined( 'ABSPATH' ) ) exit;
             </label>
             <textarea id="ille-oauth-new-uris" class="ille-pg-input" rows="3"
                 placeholder="https://chat.openai.com/aip/g-xxx/oauth/callback"></textarea>
+        </div>
+        <div class="ille-pg-field">
+            <label class="ille-pg-label" style="display:flex;align-items:center;gap:.5rem;cursor:pointer">
+                <input type="checkbox" id="ille-oauth-new-public">
+                Public client (no secret — use for ChatGPT with token auth method "none")
+            </label>
+            <p class="ille-pg-hint" style="margin-top:.25rem">Confidential clients (default) get a client secret for use with Grok, Cursor, etc.</p>
         </div>
         <button type="button" id="ille-oauth-register-btn" class="ille-pg-btn ille-pg-btn--primary">Register Client</button>
         <span id="ille-oauth-register-msg" class="ille-pg-hint" style="margin-left:.5rem"></span>

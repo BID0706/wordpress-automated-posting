@@ -553,13 +553,16 @@ class ILLE_PG_Admin {
             }
         }
 
+        $is_public = ! empty( $_POST['public_client'] );
+
         $client_id     = 'ille_' . bin2hex( random_bytes( 8 ) );
-        $client_secret = bin2hex( random_bytes( 32 ) );
+        $client_secret = $is_public ? null : bin2hex( random_bytes( 32 ) );
 
         $clients   = ILLE_PG_Settings::get_oauth_clients();
         $clients[] = [
             'client_id'          => $client_id,
-            'client_secret_hash' => password_hash( $client_secret, PASSWORD_BCRYPT ),
+            'client_secret_hash' => $is_public ? '' : password_hash( $client_secret, PASSWORD_BCRYPT ),
+            'public_client'      => $is_public,
             'name'               => $name,
             'redirect_uris'      => array_values( $redirect_uris ),
             'created_at'         => gmdate( 'c' ),
@@ -567,12 +570,15 @@ class ILLE_PG_Admin {
         ];
         ILLE_PG_Settings::save_oauth_clients( $clients );
 
-        // Secret returned once — never stored in plaintext
-        wp_send_json_success( [
+        $response = [
             'client_id'     => $client_id,
-            'client_secret' => $client_secret,
             'name'          => $name,
-        ] );
+            'public_client' => $is_public,
+        ];
+        if ( ! $is_public ) {
+            $response['client_secret'] = $client_secret; // shown once, never stored
+        }
+        wp_send_json_success( $response );
     }
 
     public function ajax_oauth_revoke_client() {
