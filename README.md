@@ -22,6 +22,7 @@ Built for [ille.com.ng](https://ille.com.ng).
   - [Available Tools](#available-tools)
   - [Supervised Draft Workflow](#supervised-draft-workflow)
   - [Image Upload](#image-upload)
+  - [OAuth 2.0 (ChatGPT & Groq)](#oauth-20-chatgpt--groq)
 - [AI Models](#ai-models)
 - [Authentication](#authentication)
 - [Project Structure](#project-structure)
@@ -356,6 +357,48 @@ Both methods return `attachment_id` and `url`. Call `get_endpoint_info` to get t
 - SSRF protection: private/loopback/reserved IP ranges blocked before download
 - Image-type enforcement: non-image files rejected and deleted after sideload
 - Base64 size cap: payloads decoding to >10 MB are rejected before disk write
+
+</details>
+
+---
+
+### OAuth 2.0 (ChatGPT & Groq)
+
+<details>
+<summary>Show OAuth 2.0 setup</summary>
+
+AI assistants that do not support API key auth (ChatGPT GPT Actions, Groq UI) can connect to the MCP server via OAuth 2.0. The plugin includes a built-in OAuth 2.0 Authorization Server as an optional feature.
+
+**OAuth Modes** (Settings → Auth & Roles → OAuth 2.0):
+
+| Mode | Behaviour |
+|------|-----------|
+| **Disabled** (default) | X-API-Key only. No OAuth. |
+| **Built-in** | Plugin runs its own OAuth server — `/.well-known`, `/oauth/authorize`, `/oauth/token`. |
+| **External** | Defers to an installed WordPress OAuth plugin (e.g. WP OAuth Server). Tokens are accepted automatically via WordPress's `determine_current_user` filter — no extra configuration needed. |
+
+**Token lifecycle (Built-in mode):**
+- Authorization code — 10 minutes, one-use
+- Access token — 1 hour
+- Refresh token — 30 days, rotated on every use (old token invalidated immediately)
+
+**Setting up ChatGPT GPT Actions (Built-in mode):**
+
+1. In WordPress admin, go to **Post Generator → Settings → Auth & Roles**.
+2. Set **OAuth Mode** to **Built-in**.
+3. Click **Register New Client**, enter a name (e.g. `ChatGPT Action`), and the redirect URI from your GPT Action editor.
+4. Copy the generated **Client ID** and **Client Secret** (shown once).
+5. In the GPT Action editor, configure OAuth:
+   - Discovery URL: `https://your-site.com/.well-known/oauth-authorization-server`
+   - Authorization URL: `https://your-site.com/wp-json/ille/v2/oauth/authorize`
+   - Token URL: `https://your-site.com/wp-json/ille/v2/oauth/token`
+   - Client ID / Secret: from step 4
+6. Save and test the connection.
+
+**Notes:**
+- PKCE (`S256`) is supported and used automatically by clients that support it.
+- X-API-Key continues to work for Cursor and Claude Desktop regardless of OAuth mode.
+- The `/oauth/register` Dynamic Client Registration endpoint is disabled by default.
 
 </details>
 

@@ -30,7 +30,7 @@ class ILLE_PG_REST_API {
     }
 
     public function check_permission( WP_REST_Request $request ): bool|WP_Error {
-        // 1. Authenticated WordPress session with an allowed role
+        // 1. WordPress session (also catches external OAuth plugin users via determine_current_user)
         if ( is_user_logged_in() ) {
             $user = wp_get_current_user();
             foreach ( ILLE_PG_Settings::get_allowed_roles() as $role ) {
@@ -40,7 +40,25 @@ class ILLE_PG_REST_API {
             }
         }
 
-        // 2. Per-user API key authentication
+        // 2. OAuth 2.0 Bearer token (built-in mode only)
+        if ( ILLE_PG_Settings::get_oauth_mode() === 'built_in' ) {
+            $auth_header = $request->get_header( 'Authorization' );
+            if ( $auth_header && strncasecmp( $auth_header, 'Bearer ', 7 ) === 0 ) {
+                $user = ILLE_PG_OAuth::resolve_bearer_token( substr( $auth_header, 7 ) );
+                if ( ! $user ) {
+                    return new WP_Error( 'unauthorized', 'Bearer token invalid or expired.', [ 'status' => 401 ] );
+                }
+                foreach ( ILLE_PG_Settings::get_allowed_roles() as $role ) {
+                    if ( in_array( $role, (array) $user->roles, true ) ) {
+                        $request->set_param( '_ille_pg_user_id', $user->ID );
+                        return true;
+                    }
+                }
+                return new WP_Error( 'forbidden', 'Your role is not permitted.', [ 'status' => 403 ] );
+            }
+        }
+
+        // 3. Per-user API key authentication
         $provided = $request->get_header( 'X-API-Key' ) ?: $request->get_param( 'api_key' );
 
         if ( ! $provided ) {
