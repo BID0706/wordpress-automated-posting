@@ -117,7 +117,7 @@ MANDATORY REQUIREMENTS — follow every rule exactly:
 8. Keyphrase density should be approximately 1–2% of total word count.
 9. Minimum 800 words of body content.
 10. Use only <p>, <h2>, <h3>, <ul>, <li>, <strong>, <em>, <a> HTML tags.
-11. Focus keyphrase MUST be 1–2 words only — no phrases longer than 2 words.
+11. Focus keyphrase should ideally be 1–2 words — avoid phrases longer than 3 words.
 
 Respond with ONLY a valid JSON object — no markdown, no code fences, no extra text:
 {

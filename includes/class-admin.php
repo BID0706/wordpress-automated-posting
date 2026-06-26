@@ -111,7 +111,7 @@ class ILLE_PG_Admin {
 
         $args = [
             'topic'          => sanitize_text_field( $_POST['topic']          ?? '' ),
-            'focus_keyword'  => ILLE_PG_Post_Creator::sanitize_keyword( sanitize_text_field( $_POST['focus_keyword'] ?? '' ) ),
+            'focus_keyword'  => sanitize_text_field( $_POST['focus_keyword'] ?? '' ),
             'featured_image' => filter_var( $_POST['featured_image'] ?? true, FILTER_VALIDATE_BOOLEAN ),
             'post_status'    => sanitize_key( $_POST['post_status'] ?? 'publish' ),
             'scheduled_date' => sanitize_text_field( $_POST['scheduled_date'] ?? '' ),

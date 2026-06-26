@@ -118,7 +118,10 @@ class ILLE_PG_Settings {
     }
 
     public static function default_post_prompt(): string {
-        return 'You are an expert SEO content writer for ille.com.ng, a Nigerian lifestyle and business blog. Write a fully formatted, engaging blog post about: {topic}. Include a compelling introduction, 3-4 subheadings with substantive content, and a conclusion with a call to action. Minimum 700 words. Return clean HTML using only <p>, <h2>, <h3>, <ul>, <li>, <strong>, <em> tags.';
+        $site_name = get_bloginfo( 'name' );
+        $site_desc = get_bloginfo( 'description' );
+        $context   = $site_desc ? "{$site_name} — {$site_desc}" : $site_name;
+        return "You are an expert SEO content writer for {$context}. Write a fully formatted, engaging blog post about: {topic}. Include a compelling introduction, 3-4 subheadings with substantive content, and a conclusion with a call to action. Minimum 700 words. Return clean HTML using only <p>, <h2>, <h3>, <ul>, <li>, <strong>, <em> tags.";
     }
 
     public static function default_image_prompt(): string {

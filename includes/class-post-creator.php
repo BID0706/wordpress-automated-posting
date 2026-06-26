@@ -131,6 +131,69 @@ class ILLE_PG_Post_Creator {
         return $post_id;
     }
 
+    // =========================================================================
+    // create_from_content — publish pre-written content without the AI pipeline
+    // =========================================================================
+
+    public static function create_from_content( array $args = [] ): int|WP_Error {
+        $args = wp_parse_args( $args, [
+            'title'          => '',
+            'content'        => '',
+            'excerpt'        => '',
+            'focus_keyword'  => '',
+            'featured_image' => true,
+            'post_status'    => 'publish',
+            'author_id'      => 0,
+            'trigger'        => ILLE_PG_Logger::TRIGGER_ENDPOINT,
+        ] );
+
+        if ( ! $args['author_id'] ) {
+            $args['author_id'] = get_current_user_id() ?: 1;
+        }
+
+        if ( empty( trim( $args['title'] ) ) || empty( trim( $args['content'] ) ) ) {
+            return new WP_Error( 'missing_fields', '"title" and "content" are required.' );
+        }
+
+        $post_status = in_array( $args['post_status'], [ 'publish', 'draft' ], true )
+            ? $args['post_status'] : 'publish';
+
+        $post_id = wp_insert_post( [
+            'post_title'   => sanitize_text_field( $args['title'] ),
+            'post_content' => wp_kses_post( $args['content'] ),
+            'post_excerpt' => sanitize_text_field( $args['excerpt'] ),
+            'post_status'  => $post_status,
+            'post_author'  => $args['author_id'],
+        ], true );
+
+        if ( is_wp_error( $post_id ) ) return $post_id;
+
+        $kw = sanitize_text_field( $args['focus_keyword'] );
+        if ( $kw ) {
+            update_post_meta( $post_id, '_yoast_wpseo_focuskw', $kw );
+            update_post_meta( $post_id, '_yoast_wpseo_title',   $kw . ' %%sep%% %%sitename%%' );
+        }
+        if ( $args['excerpt'] ) {
+            update_post_meta( $post_id, '_yoast_wpseo_metadesc', sanitize_text_field( $args['excerpt'] ) );
+        }
+
+        if ( $args['featured_image'] ) {
+            $alt = $kw ?: sanitize_text_field( $args['title'] );
+            ILLE_PG_AI_Generator::schedule_image_async( $post_id, sanitize_text_field( $args['title'] ), $alt );
+        }
+
+        ILLE_PG_Logger::log( ILLE_PG_Logger::EVENT_POST_CREATED, [
+            'post_id'  => $post_id,
+            'title'    => $args['title'],
+            'status'   => $post_status,
+            'keyword'  => $kw,
+            'source'   => 'direct_content',
+            'post_url' => get_permalink( $post_id ),
+        ], $args['trigger'], $args['author_id'] );
+
+        return $post_id;
+    }
+
     // -------------------------------------------------------------------------
     // Phase 1: Dummy content
     // -------------------------------------------------------------------------

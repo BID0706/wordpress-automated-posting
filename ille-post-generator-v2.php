@@ -22,10 +22,12 @@ require_once ILLE_PG_DIR . 'includes/class-ai-generator.php';
 require_once ILLE_PG_DIR . 'includes/class-post-creator.php';
 require_once ILLE_PG_DIR . 'includes/class-scheduler.php';
 require_once ILLE_PG_DIR . 'includes/class-rest-api.php';
+require_once ILLE_PG_DIR . 'includes/class-mcp.php';
 require_once ILLE_PG_DIR . 'includes/class-admin.php';
 
 function ille_pg_init() {
     new ILLE_PG_REST_API();
+    new ILLE_PG_MCP();
     new ILLE_PG_Scheduler();
     if ( is_admin() ) {
         new ILLE_PG_Admin();
