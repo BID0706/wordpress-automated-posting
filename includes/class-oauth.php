@@ -221,6 +221,12 @@ class ILLE_PG_OAuth {
             'state'                 => $params['state'],
         ], self::TRANSIENT_CODE_TTL );
 
+        ILLE_PG_Logger::log( ILLE_PG_Logger::EVENT_OAUTH_CODE, [
+            'client_id'   => $params['client_id'],
+            'client_name' => $params['client']['name'],
+            'scope'        => $params['scope'],
+        ], ILLE_PG_Logger::TRIGGER_ENDPOINT, $user->ID );
+
         $redirect = add_query_arg( [
             'code'  => $code,
             'state' => $params['state'],
@@ -303,11 +309,24 @@ class ILLE_PG_OAuth {
         $is_public_client = empty( $client['client_secret_hash'] );
         if ( ! $is_public_client && ! $pkce_verified ) {
             if ( ! password_verify( $client_secret, $client['client_secret_hash'] ) ) {
+                ILLE_PG_Logger::log( ILLE_PG_Logger::EVENT_OAUTH_FAILED, [
+                    'reason'    => 'invalid_client_secret',
+                    'client_id' => $client_id,
+                ], ILLE_PG_Logger::TRIGGER_ENDPOINT );
                 return $this->token_error( 'invalid_client', 'Invalid client credentials.' );
             }
         }
 
-        return $this->issue_token_pair( (int) $stored['user_id'], $client_id, $stored['scope'] );
+        $token_response = $this->issue_token_pair( (int) $stored['user_id'], $client_id, $stored['scope'] );
+
+        ILLE_PG_Logger::log( ILLE_PG_Logger::EVENT_OAUTH_TOKEN, [
+            'client_id'   => $client_id,
+            'client_name' => $client['name'] ?? '',
+            'scope'       => $stored['scope'],
+            'pkce'        => $pkce_verified,
+        ], ILLE_PG_Logger::TRIGGER_ENDPOINT, (int) $stored['user_id'] );
+
+        return $token_response;
     }
 
     private function grant_refresh_token( WP_REST_Request $request ): WP_REST_Response {
@@ -328,10 +347,21 @@ class ILLE_PG_OAuth {
             }
         }
 
-        $refresh_key = 'ille_pg_refresh_' . hash( 'sha256', $refresh_token );
-        $stored      = get_transient( $refresh_key );
+        $refresh_key  = 'ille_pg_refresh_' . hash( 'sha256', $refresh_token );
+        $receipt_key  = 'ille_pg_rcp_'     . hash( 'sha256', $refresh_token );
+        $stored       = get_transient( $refresh_key );
 
+        // Idempotency: if the token was already rotated but our response was lost (client
+        // timed out and retried), return the cached new pair for up to 90 seconds.
         if ( ! $stored ) {
+            $receipt = get_transient( $receipt_key );
+            if ( $receipt ) {
+                return new WP_REST_Response( $receipt, 200 );
+            }
+            ILLE_PG_Logger::log( ILLE_PG_Logger::EVENT_OAUTH_FAILED, [
+                'reason'    => 'refresh_token_invalid_or_expired',
+                'client_id' => $client_id,
+            ], ILLE_PG_Logger::TRIGGER_ENDPOINT );
             return $this->token_error( 'invalid_grant', 'Refresh token expired, invalid, or already used.' );
         }
 
@@ -342,7 +372,18 @@ class ILLE_PG_OAuth {
             return $this->token_error( 'invalid_grant', 'Client ID mismatch.' );
         }
 
-        return $this->issue_token_pair( (int) $stored['user_id'], $client_id, $stored['scope'] );
+        $token_response = $this->issue_token_pair( (int) $stored['user_id'], $client_id, $stored['scope'] );
+
+        // Store receipt under the old token hash so a retry within 90s gets the same response
+        set_transient( $receipt_key, $token_response->get_data(), 90 );
+
+        ILLE_PG_Logger::log( ILLE_PG_Logger::EVENT_OAUTH_REFRESH, [
+            'client_id'   => $client_id,
+            'client_name' => $client['name'] ?? '',
+            'scope'       => $stored['scope'],
+        ], ILLE_PG_Logger::TRIGGER_ENDPOINT, (int) $stored['user_id'] );
+
+        return $token_response;
     }
 
     private function issue_token_pair( int $user_id, string $client_id, string $scope ): WP_REST_Response {
