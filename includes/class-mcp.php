@@ -499,6 +499,13 @@ class ILLE_PG_MCP {
             'orderby'     => 'display_name',
             'order'       => 'ASC',
             'count_total' => true,
+            'meta_query'  => [
+                [
+                    'key'     => ILLE_PG_Settings::USER_META_API_KEY,
+                    'value'   => '',
+                    'compare' => '!=',
+                ],
+            ],
         ];
 
         if ( $search ) {
@@ -560,6 +567,10 @@ class ILLE_PG_MCP {
         $target = get_userdata( $target_id );
         if ( ! $target ) return $this->err( 'User not found.' );
 
+        if ( ! ILLE_PG_Settings::get_user_api_key( $target_id ) ) {
+            return $this->err( "User \"{$target->display_name}\" has no API key to revoke." );
+        }
+
         ILLE_PG_Settings::revoke_user_api_key( $target_id );
 
         ILLE_PG_Logger::log( ILLE_PG_Logger::EVENT_API_KEY_ACTION, [
@@ -572,7 +583,22 @@ class ILLE_PG_MCP {
     }
 
     private function tool_get_allowed_roles(): array {
-        return $this->ok( [ 'allowed_roles' => ILLE_PG_Settings::get_allowed_roles() ] );
+        $allowed   = ILLE_PG_Settings::get_allowed_roles();
+        $all_roles = wp_roles()->get_names();
+
+        $available = [];
+        foreach ( $all_roles as $slug => $label ) {
+            $available[] = [
+                'role'       => $slug,
+                'label'      => translate_user_role( $label ),
+                'is_allowed' => in_array( $slug, $allowed, true ),
+            ];
+        }
+
+        return $this->ok( [
+            'allowed_roles'   => $allowed,
+            'available_roles' => $available,
+        ] );
     }
 
     private function tool_set_allowed_roles( array $args, int $actor_id ): array {
@@ -581,7 +607,7 @@ class ILLE_PG_MCP {
         }
 
         $roles = array_values( array_filter( array_map( 'sanitize_text_field', (array) ( $args['roles'] ?? [] ) ) ) );
-        ILLE_PG_Logger::log_settings_change( ILLE_PG_Settings::KEY_ALLOWED_ROLES, ILLE_PG_Settings::get_allowed_roles(), $roles );
+        ILLE_PG_Logger::log_settings_change( ILLE_PG_Settings::KEY_ALLOWED_ROLES, ILLE_PG_Settings::get_allowed_roles(), $roles, ILLE_PG_Logger::TRIGGER_ENDPOINT, $actor_id );
         ILLE_PG_Settings::set( ILLE_PG_Settings::KEY_ALLOWED_ROLES, $roles );
 
         return $this->ok( [ 'allowed_roles' => $roles ] );
@@ -637,7 +663,7 @@ class ILLE_PG_MCP {
             return $this->err( "Unknown model_id: {$model_id}. Call get_models to see valid IDs." );
         }
 
-        ILLE_PG_Logger::log_settings_change( ILLE_PG_Settings::KEY_ACTIVE_MODEL, ILLE_PG_Settings::get( ILLE_PG_Settings::KEY_ACTIVE_MODEL ), $model_id );
+        ILLE_PG_Logger::log_settings_change( ILLE_PG_Settings::KEY_ACTIVE_MODEL, ILLE_PG_Settings::get( ILLE_PG_Settings::KEY_ACTIVE_MODEL ), $model_id, ILLE_PG_Logger::TRIGGER_ENDPOINT, $actor_id );
         ILLE_PG_Settings::set( ILLE_PG_Settings::KEY_ACTIVE_MODEL, $model_id );
 
         return $this->ok( [ 'active_text_model' => $model_id ] );
@@ -655,7 +681,7 @@ class ILLE_PG_MCP {
             return $this->err( "Unknown image model_id: {$model_id}. Call get_models to see valid IDs." );
         }
 
-        ILLE_PG_Logger::log_settings_change( ILLE_PG_Settings::KEY_IMAGE_MODEL, ILLE_PG_Settings::get_image_model(), $model_id );
+        ILLE_PG_Logger::log_settings_change( ILLE_PG_Settings::KEY_IMAGE_MODEL, ILLE_PG_Settings::get_image_model(), $model_id, ILLE_PG_Logger::TRIGGER_ENDPOINT, $actor_id );
         ILLE_PG_Settings::set( ILLE_PG_Settings::KEY_IMAGE_MODEL, $model_id );
 
         return $this->ok( [ 'active_image_model' => $model_id ] );
@@ -687,7 +713,7 @@ class ILLE_PG_MCP {
         $opt_key = $type === 'post' ? ILLE_PG_Settings::KEY_POST_PROMPT : ILLE_PG_Settings::KEY_IMAGE_PROMPT;
         $value   = wp_kses_post( $content );
 
-        ILLE_PG_Logger::log_settings_change( $opt_key, ILLE_PG_Settings::get( $opt_key ), $value );
+        ILLE_PG_Logger::log_settings_change( $opt_key, ILLE_PG_Settings::get( $opt_key ), $value, ILLE_PG_Logger::TRIGGER_ENDPOINT, $actor_id );
         ILLE_PG_Settings::set( $opt_key, $value );
 
         return $this->ok( [ 'type' => $type, 'updated' => true ] );

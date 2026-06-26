@@ -177,7 +177,7 @@ class ILLE_PG_Logger {
     // Settings diff helper
     // -------------------------------------------------------------------------
 
-    public static function log_settings_change( string $key, $prev, $new ): void {
+    public static function log_settings_change( string $key, $prev, $new, string $trigger = self::TRIGGER_MANUAL, int $user_id = 0 ): void {
         // Don't log if nothing changed or if it's a sensitive key
         $sensitive = [
             ILLE_PG_Settings::KEY_GEMINI_KEY,
@@ -194,6 +194,6 @@ class ILLE_PG_Logger {
             'key'  => $key,
             'prev' => $display_prev,
             'new'  => $display_new,
-        ] );
+        ], $trigger, $user_id );
     }
 }
