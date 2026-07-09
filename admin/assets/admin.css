@@ -1271,3 +1271,47 @@
     0%, 100% { opacity: .25; transform: scale(.85); }
     50%       { opacity: 1;   transform: scale(1);   }
 }
+
+/* --- Password/value reveal toggle (eye icon) --- */
+.ille-pg-password-wrap {
+    position: relative;
+    display: block;
+}
+.ille-pg-password-wrap .ille-pg-input {
+    /* leave room for the eye button so long values don't sit under it */
+    padding-right: 40px;
+}
+.ille-pg-eye {
+    position: absolute;
+    top: 0;
+    right: 0;
+    height: 100%;
+    width: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    margin: 0;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    color: var(--ille-text-muted);
+    transition: color .15s;
+}
+.ille-pg-eye:hover,
+.ille-pg-eye:focus-visible { color: var(--ille-accent); }
+.ille-pg-eye:focus-visible { outline: 2px solid var(--ille-accent); outline-offset: -2px; border-radius: var(--ille-radius-sm); }
+/* eye (hidden state) */
+.ille-pg-eye::before {
+    content: "";
+    width: 18px;
+    height: 18px;
+    background-color: currentColor;
+    -webkit-mask: center / contain no-repeat url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z'/%3E%3Ccircle cx='12' cy='12' r='3'/%3E%3C/svg%3E");
+    mask: center / contain no-repeat url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z'/%3E%3Ccircle cx='12' cy='12' r='3'/%3E%3C/svg%3E");
+}
+/* eye-off (visible state) */
+.ille-pg-eye[aria-pressed="true"]::before {
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9.9 4.24A9.12 9.12 0 0 1 12 4c6.5 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68'/%3E%3Cpath d='M6.61 6.61A13.526 13.526 0 0 0 2 12s3.5 7 10 7a9.74 9.74 0 0 0 5.39-1.61'/%3E%3Cline x1='2' y1='2' x2='22' y2='22'/%3E%3C/svg%3E");
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9.9 4.24A9.12 9.12 0 0 1 12 4c6.5 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68'/%3E%3Cpath d='M6.61 6.61A13.526 13.526 0 0 0 2 12s3.5 7 10 7a9.74 9.74 0 0 0 5.39-1.61'/%3E%3Cline x1='2' y1='2' x2='22' y2='22'/%3E%3C/svg%3E");
+}

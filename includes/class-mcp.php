@@ -313,7 +313,7 @@ class ILLE_PG_MCP {
                     'type'       => 'object',
                     'required'   => [ 'model_id' ],
                     'properties' => [
-                        'model_id' => [ 'type' => 'string', 'description' => 'Model ID from get_models (e.g. "gemini-2.0-flash", "gpt-4o-mini", "grok-3-mini")' ],
+                        'model_id' => [ 'type' => 'string', 'description' => 'Model ID from get_models (e.g. "gemini-2.0-flash", "gpt-4o-mini", "grok-4.5")' ],
                     ],
                 ],
             ],
@@ -325,7 +325,7 @@ class ILLE_PG_MCP {
                     'type'       => 'object',
                     'required'   => [ 'model_id' ],
                     'properties' => [
-                        'model_id' => [ 'type' => 'string', 'description' => 'Image model ID (e.g. "auto", "pollinations", "dall-e-3", "grok-aurora", "gemini-imagen")' ],
+                        'model_id' => [ 'type' => 'string', 'description' => 'Image model ID (e.g. "auto", "pollinations", "dall-e-3", "grok-imagine", "gemini-imagen")' ],
                     ],
                 ],
             ],

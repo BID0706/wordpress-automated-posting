@@ -4,6 +4,7 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 class ILLE_PG_Logger {
 
     const EVENT_POST_CREATED     = 'post_created';
+    const EVENT_SCHEDULE_RUN     = 'schedule_run';
     const EVENT_SETTINGS_CHANGED = 'settings_changed';
     const EVENT_API_KEY_ACTION   = 'api_key_action';
     const EVENT_LOG_EXPORTED     = 'log_exported';

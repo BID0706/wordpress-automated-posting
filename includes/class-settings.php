@@ -203,7 +203,7 @@ class ILLE_PG_Settings {
             'auto'           => 'Auto (match text model preference)',
             'pollinations'   => 'Pollinations.ai',
             'dall-e-3'       => 'DALL·E 3 (uses OpenAI key)',
-            'grok-aurora'    => 'Grok Aurora (uses xAI key)',
+            'grok-imagine'   => 'Grok Imagine (uses xAI key)',
             'gemini-imagen'  => 'Gemini Imagen (uses Google key)',
         ];
     }
@@ -215,7 +215,7 @@ class ILLE_PG_Settings {
             $text = self::resolve_active_model();
             $map  = [
                 'gpt-4o-mini'      => 'dall-e-3',
-                'grok-3-mini'      => 'grok-aurora',
+                'grok-4.5'         => 'grok-imagine',
                 'gemini-2.0-flash' => 'gemini-imagen',
             ];
             $pref = ( ! is_wp_error( $text ) && isset( $map[ $text['id'] ] ) )
@@ -225,7 +225,7 @@ class ILLE_PG_Settings {
 
         $key_map = [
             'dall-e-3'      => self::KEY_OPENAI_KEY,
-            'grok-aurora'   => self::KEY_XAI_KEY,
+            'grok-imagine'  => self::KEY_XAI_KEY,
             'gemini-imagen' => self::KEY_GEMINI_KEY,
             'pollinations'  => self::KEY_POLLINATIONS_KEY,
         ];
@@ -249,11 +249,11 @@ class ILLE_PG_Settings {
                 'free'     => false,
                 'note'     => 'Paid — <a href="https://platform.openai.com/api-keys" target="_blank">Get key</a>',
             ],
-            'grok-3-mini' => [
-                'label'    => 'xAI Grok 3 Mini',
+            'grok-4.5' => [
+                'label'    => 'xAI Grok 4.5',
                 'key_opt'  => self::KEY_XAI_KEY,
-                'free'     => true,
-                'note'     => 'Free credits — <a href="https://console.x.ai/" target="_blank">Get key</a>',
+                'free'     => false,
+                'note'     => 'Paid (requires credits) — <a href="https://console.x.ai/" target="_blank">Get key</a>',
             ],
         ];
     }

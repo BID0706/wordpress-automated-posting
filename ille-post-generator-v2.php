@@ -44,9 +44,10 @@ add_action( 'ille_pg_image_async', [ 'ILLE_PG_AI_Generator', 'handle_async_image
 
 register_activation_hook( __FILE__, 'ille_pg_activate' );
 function ille_pg_activate() {
-    if ( ! get_option( ILLE_PG_Settings::KEY_API_KEY ) ) {
-        update_option( ILLE_PG_Settings::KEY_API_KEY, wp_generate_password( 32, false ) );
-    }
+    // Note: API keys are per-user (user meta), generated on demand — no global
+    // key option is created here. A stray reference to a non-existent
+    // KEY_API_KEY constant used to fatal this hook before the cron schedules
+    // were registered, which silently broke all scheduled posts (issue #12).
     ILLE_PG_Scheduler::register_cron_schedules();
     flush_rewrite_rules(); // ensure .well-known rewrite rule activates immediately
 }

@@ -617,6 +617,21 @@
     });
 
     // =========================================================================
+    // Show/hide toggle (eye icon) for masked value fields — issue #13
+    // =========================================================================
+    $(document).on('click', '.ille-pg-eye', function () {
+        const $btn   = $(this);
+        const $input = $btn.closest('.ille-pg-password-wrap').find('input').first();
+        if (!$input.length) return;
+
+        const reveal = $input.attr('type') === 'password';
+        $input.attr('type', reveal ? 'text' : 'password');
+        $btn.attr('aria-pressed', reveal ? 'true' : 'false');
+        const label = reveal ? 'Hide value' : 'Show value';
+        $btn.attr('aria-label', label).attr('title', label);
+    });
+
+    // =========================================================================
     // Schedule toggle — show/hide schedule body
     // =========================================================================
 
@@ -648,14 +663,14 @@
         const modelKeys = {
             'gemini-2.0-flash': v( 'ille_pg_gemini_api_key' ),
             'gpt-4o-mini':      v( 'ille_pg_openai_api_key' ),
-            'grok-3-mini':      v( 'ille_pg_xai_api_key' ),
+            'grok-4.5':         v( 'ille_pg_xai_api_key' ),
         };
         const modelNames = {
             'gemini-2.0-flash': 'Gemini 2.0 Flash',
             'gpt-4o-mini':      'GPT-4o Mini',
-            'grok-3-mini':      'Grok 3 Mini',
+            'grok-4.5':         'Grok 4.5',
         };
-        const fallbackOrder = [ 'gemini-2.0-flash', 'gpt-4o-mini', 'grok-3-mini' ];
+        const fallbackOrder = [ 'gemini-2.0-flash', 'gpt-4o-mini', 'grok-4.5' ];
 
         // Try preferred first, then fallback order
         let resolved = null;

@@ -150,7 +150,10 @@ class ILLE_PG_Admin {
             wp_send_json_error( [ 'message' => 'Permission denied.' ], 403 );
         }
 
-        $fields = $_POST['settings'] ?? [];
+        // WordPress adds slashes to all $_POST data. Unslash before sanitizing —
+        // otherwise every save re-reads the already-slashed value and adds another
+        // layer of escaping (e.g. ILLE\'s → ILLE\\\'s → …). See issue #14.
+        $fields = wp_unslash( $_POST['settings'] ?? [] );
 
         // Simple text/password/radio fields
         $string_keys = [
