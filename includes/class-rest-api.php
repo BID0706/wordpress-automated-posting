@@ -40,12 +40,19 @@ class ILLE_PG_REST_API {
             }
         }
 
+        // Brute-force lockout: too many recent auth failures from this IP.
+        $throttle_id = ILLE_PG_Throttle::client_ip();
+        if ( ILLE_PG_Throttle::is_locked( $throttle_id ) ) {
+            return new WP_Error( 'too_many_requests', 'Too many failed attempts. Try again later.', [ 'status' => 429 ] );
+        }
+
         // 2. OAuth 2.0 Bearer token (built-in mode only)
         if ( ILLE_PG_Settings::get_oauth_mode() === 'built_in' ) {
             $auth_header = $request->get_header( 'Authorization' );
             if ( $auth_header && strncasecmp( $auth_header, 'Bearer ', 7 ) === 0 ) {
                 $user = ILLE_PG_OAuth::resolve_bearer_token( substr( $auth_header, 7 ) );
                 if ( ! $user ) {
+                    ILLE_PG_Throttle::record_failure( $throttle_id );
                     return new WP_Error( 'unauthorized', 'Bearer token invalid or expired.', [ 'status' => 401 ] );
                 }
                 foreach ( ILLE_PG_Settings::get_allowed_roles() as $role ) {
@@ -72,6 +79,7 @@ class ILLE_PG_REST_API {
         $user = ILLE_PG_Settings::get_user_by_api_key( (string) $provided );
 
         if ( ! $user ) {
+            ILLE_PG_Throttle::record_failure( $throttle_id );
             ILLE_PG_Logger::log( ILLE_PG_Logger::EVENT_ENDPOINT_ERROR, [
                 'reason'      => 'invalid_api_key',
                 'key_preview' => substr( $provided, 0, 6 ) . '…',
@@ -102,6 +110,7 @@ class ILLE_PG_REST_API {
         // Store resolved user ID on the request for handle_request()
         $request->set_param( '_ille_pg_user_id', $user->ID );
         ILLE_PG_Settings::touch_api_key( $user->ID );
+        ILLE_PG_Throttle::clear( $throttle_id );
 
         return true;
     }

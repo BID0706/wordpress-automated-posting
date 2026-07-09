@@ -188,6 +188,7 @@ class ILLE_PG_Logger {
             ILLE_PG_Settings::KEY_GEMINI_KEY,
             ILLE_PG_Settings::KEY_OPENAI_KEY,
             ILLE_PG_Settings::KEY_XAI_KEY,
+            ILLE_PG_Settings::KEY_POLLINATIONS_KEY,
         ];
 
         $display_prev = in_array( $key, $sensitive, true ) ? ( $prev ? '••••••••' : '' ) : $prev;

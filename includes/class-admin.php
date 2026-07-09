@@ -170,11 +170,18 @@ class ILLE_PG_Admin {
         $endpoint_changed = isset( $fields[ ILLE_PG_Settings::KEY_CUSTOM_ENDPOINT ] )
             && $fields[ ILLE_PG_Settings::KEY_CUSTOM_ENDPOINT ] !== get_option( ILLE_PG_Settings::KEY_CUSTOM_ENDPOINT, '' );
 
+        $secret_keys = ILLE_PG_Settings::secret_option_keys();
         foreach ( $string_keys as $key ) {
             if ( isset( $fields[ $key ] ) ) {
-                $prev = get_option( $key, '' );
-                $new  = sanitize_textarea_field( $fields[ $key ] );
-                update_option( $key, $new );
+                $new = sanitize_textarea_field( $fields[ $key ] );
+                if ( in_array( $key, $secret_keys, true ) ) {
+                    // Compare/log against the decrypted previous value; store encrypted.
+                    $prev = ILLE_PG_Settings::get_secret( $key );
+                    update_option( $key, $new === '' ? '' : ILLE_PG_Crypto::encrypt( $new ) );
+                } else {
+                    $prev = get_option( $key, '' );
+                    update_option( $key, $new );
+                }
                 ILLE_PG_Logger::log_settings_change( $key, $prev, $new );
             }
         }

@@ -3,7 +3,7 @@
  * Plugin Name: ILLE Post Generator V2
  * Plugin URI:  https://ille.com.ng
  * Description: Generates SEO-optimized posts via admin UI or REST endpoint with supervised/unsupervised workflows.
- * Version:     1.0.1
+ * Version:     1.6.0
  * Author:      ILLE
  * License:     GPL-2.0+
  * Text Domain: ille-pg
@@ -11,11 +11,13 @@
 
 if ( ! defined( 'ABSPATH' ) ) exit;
 
-define( 'ILLE_PG_VERSION',  '1.2.1' );
+define( 'ILLE_PG_VERSION',  '1.6.0' );
 define( 'ILLE_PG_DIR',      plugin_dir_path( __FILE__ ) );
 define( 'ILLE_PG_URL',      plugin_dir_url( __FILE__ ) );
 define( 'ILLE_PG_BASENAME', plugin_basename( __FILE__ ) );
 
+require_once ILLE_PG_DIR . 'includes/class-crypto.php';
+require_once ILLE_PG_DIR . 'includes/class-throttle.php';
 require_once ILLE_PG_DIR . 'includes/class-settings.php';
 require_once ILLE_PG_DIR . 'includes/class-logger.php';
 require_once ILLE_PG_DIR . 'includes/class-ai-generator.php';
@@ -38,6 +40,18 @@ function ille_pg_init() {
     }
 }
 add_action( 'plugins_loaded', 'ille_pg_init' );
+
+// One-time migration: encrypt secrets (API keys + provider keys) stored as
+// plaintext before at-rest encryption was introduced. Runs once in admin.
+add_action( 'admin_init', 'ille_pg_maybe_migrate_secrets' );
+function ille_pg_maybe_migrate_secrets() {
+    if ( get_option( 'ille_pg_secret_migration' ) === '1' ) {
+        return;
+    }
+    ILLE_PG_Settings::migrate_encrypt_api_keys();
+    ILLE_PG_Settings::migrate_encrypt_provider_keys();
+    update_option( 'ille_pg_secret_migration', '1' );
+}
 
 // Async image generation cron callback
 add_action( 'ille_pg_image_async', [ 'ILLE_PG_AI_Generator', 'handle_async_image' ], 10, 3 );

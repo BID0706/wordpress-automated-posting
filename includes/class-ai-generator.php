@@ -321,7 +321,7 @@ Respond with ONLY a valid JSON object — no markdown, no code fences, no extra 
 
         // Primary model failed — try Pollinations as last resort (unless it was primary)
         if ( $model['id'] !== 'pollinations' ) {
-            $poll_key = trim( (string) ILLE_PG_Settings::get( ILLE_PG_Settings::KEY_POLLINATIONS_KEY, '' ) );
+            $poll_key = trim( ILLE_PG_Settings::get_secret( ILLE_PG_Settings::KEY_POLLINATIONS_KEY ) );
             $attachment_id = self::generate_image_pollinations( $poll_key, $prompt, $alt_text );
         }
 
