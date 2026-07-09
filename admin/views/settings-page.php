@@ -388,7 +388,7 @@ while ( count( $schedules ) < ILLE_PG_Settings::MAX_SCHEDULES ) {
 
                 <div class="ille-pg-models">
                     <?php foreach ( $models as $model_id => $model ) :
-                        $key_val = ILLE_PG_Settings::get( $model['key_opt'], '' );
+                        $key_val = ILLE_PG_Settings::get_secret( $model['key_opt'] );
                     ?>
                         <div class="ille-pg-model-card <?php echo $active_model === $model_id ? 'active' : ''; ?>" data-model-id="<?php echo esc_attr( $model_id ); ?>">
                             <label class="ille-pg-model-card__header">
@@ -445,7 +445,7 @@ while ( count( $schedules ) < ILLE_PG_Settings::MAX_SCHEDULES ) {
             <?php
             $image_models      = ILLE_PG_Settings::get_available_image_models();
             $active_img_model  = ILLE_PG_Settings::get_image_model();
-            $pollinations_key  = ILLE_PG_Settings::get( ILLE_PG_Settings::KEY_POLLINATIONS_KEY, '' );
+            $pollinations_key  = ILLE_PG_Settings::get_secret( ILLE_PG_Settings::KEY_POLLINATIONS_KEY );
             ?>
             <div class="ille-pg-card" style="margin-top:16px">
                 <div class="ille-pg-card__header"><h2>Image Generation</h2></div>

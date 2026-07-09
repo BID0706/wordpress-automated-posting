@@ -31,21 +31,50 @@ class ILLE_PG_Settings {
         return update_option( $key, $value );
     }
 
+    /**
+     * Option keys whose values are secrets encrypted at rest.
+     */
+    public static function secret_option_keys(): array {
+        return [
+            self::KEY_GEMINI_KEY,
+            self::KEY_OPENAI_KEY,
+            self::KEY_XAI_KEY,
+            self::KEY_POLLINATIONS_KEY,
+        ];
+    }
+
+    /**
+     * Read a secret option, decrypting it if stored encrypted. Legacy plaintext
+     * values are returned unchanged (and get encrypted on the next save).
+     */
+    public static function get_secret( string $key ): string {
+        $stored = (string) self::get( $key, '' );
+        return $stored === '' ? '' : ILLE_PG_Crypto::decrypt( $stored );
+    }
+
     // User meta key for per-user API keys
-    const USER_META_API_KEY      = 'ille_pg_api_key';
-    const USER_META_API_KEY_LAST = 'ille_pg_api_key_last_used';
+    const USER_META_API_KEY        = 'ille_pg_api_key';        // encrypted at rest
+    const USER_META_API_KEY_LAST   = 'ille_pg_api_key_last_used';
+    const USER_META_API_KEY_LOOKUP = 'ille_pg_api_key_lookup'; // keyed HMAC index for resolution
 
     // -------------------------------------------------------------------------
     // Per-user API key helpers
+    //
+    // Keys are stored encrypted (reversible) so the value can still be shown in
+    // the UI, while a DB leak alone does not expose usable keys. A separate
+    // deterministic HMAC "lookup" meta lets an incoming key be resolved to its
+    // user without decrypting every stored value.
     // -------------------------------------------------------------------------
 
     public static function get_user_api_key( int $user_id ): string {
-        return (string) get_user_meta( $user_id, self::USER_META_API_KEY, true );
+        $stored = (string) get_user_meta( $user_id, self::USER_META_API_KEY, true );
+        return $stored === '' ? '' : ILLE_PG_Crypto::decrypt( $stored );
     }
 
     public static function generate_user_api_key( int $user_id ): string {
         $key = wp_generate_password( 32, false );
-        update_user_meta( $user_id, self::USER_META_API_KEY, $key );
+        update_user_meta( $user_id, self::USER_META_API_KEY, ILLE_PG_Crypto::encrypt( $key ) );
+        update_user_meta( $user_id, self::USER_META_API_KEY_LOOKUP, ILLE_PG_Crypto::lookup_hash( $key ) );
         delete_user_meta( $user_id, self::USER_META_API_KEY_LAST );
         return $key;
     }
@@ -53,13 +82,22 @@ class ILLE_PG_Settings {
     public static function get_user_by_api_key( string $key ): WP_User|false {
         if ( empty( $key ) ) return false;
 
+        // Resolve via the deterministic lookup index (encrypted values are not
+        // directly queryable). Fall back to a legacy plaintext match so keys
+        // created before encryption keep working until migrated.
         $users = get_users( [
+            'meta_key'   => self::USER_META_API_KEY_LOOKUP,
+            'meta_value' => ILLE_PG_Crypto::lookup_hash( $key ),
+            'number'     => 1,
+        ] );
+        if ( ! empty( $users ) ) return $users[0];
+
+        $legacy = get_users( [
             'meta_key'   => self::USER_META_API_KEY,
             'meta_value' => $key,
             'number'     => 1,
         ] );
-
-        return ! empty( $users ) ? $users[0] : false;
+        return ! empty( $legacy ) ? $legacy[0] : false;
     }
 
     public static function touch_api_key( int $user_id ): void {
@@ -68,7 +106,44 @@ class ILLE_PG_Settings {
 
     public static function revoke_user_api_key( int $user_id ): void {
         delete_user_meta( $user_id, self::USER_META_API_KEY );
+        delete_user_meta( $user_id, self::USER_META_API_KEY_LOOKUP );
         delete_user_meta( $user_id, self::USER_META_API_KEY_LAST );
+    }
+
+    /**
+     * One-time migration: encrypt any plaintext per-user API keys still stored
+     * from before at-rest encryption, and backfill their HMAC lookup index.
+     * Idempotent — already-encrypted values are skipped. Existing keys keep
+     * working because the raw value is preserved (just re-stored encrypted).
+     */
+    public static function migrate_encrypt_api_keys(): void {
+        $users = get_users( [
+            'meta_key' => self::USER_META_API_KEY,
+            'fields'   => 'ID',
+        ] );
+
+        foreach ( $users as $uid ) {
+            $stored = (string) get_user_meta( $uid, self::USER_META_API_KEY, true );
+            if ( $stored === '' || ILLE_PG_Crypto::is_encrypted( $stored ) ) {
+                continue; // already encrypted or empty
+            }
+            // $stored is legacy plaintext: index it, then replace with ciphertext.
+            update_user_meta( $uid, self::USER_META_API_KEY_LOOKUP, ILLE_PG_Crypto::lookup_hash( $stored ) );
+            update_user_meta( $uid, self::USER_META_API_KEY, ILLE_PG_Crypto::encrypt( $stored ) );
+        }
+    }
+
+    /**
+     * One-time migration: encrypt any plaintext provider keys (Gemini/OpenAI/
+     * xAI/Pollinations) still stored from before at-rest encryption. Idempotent.
+     */
+    public static function migrate_encrypt_provider_keys(): void {
+        foreach ( self::secret_option_keys() as $key ) {
+            $val = (string) self::get( $key, '' );
+            if ( $val !== '' && ! ILLE_PG_Crypto::is_encrypted( $val ) ) {
+                self::set( $key, ILLE_PG_Crypto::encrypt( $val ) );
+            }
+        }
     }
 
     public static function get_users_with_allowed_roles(): array {
@@ -147,7 +222,7 @@ class ILLE_PG_Settings {
         usort( $order, fn( $a ) => $a === $preferred ? -1 : 1 );
 
         foreach ( $order as $id ) {
-            $key = trim( (string) self::get( $models[ $id ]['key_opt'], '' ) );
+            $key = trim( self::get_secret( $models[ $id ]['key_opt'] ) );
             if ( $key ) {
                 return [ 'id' => $id, 'key' => $key, 'model' => $models[ $id ] ];
             }
@@ -230,7 +305,7 @@ class ILLE_PG_Settings {
             'pollinations'  => self::KEY_POLLINATIONS_KEY,
         ];
 
-        $key = trim( (string) self::get( $key_map[ $pref ] ?? self::KEY_POLLINATIONS_KEY, '' ) );
+        $key = trim( self::get_secret( $key_map[ $pref ] ?? self::KEY_POLLINATIONS_KEY ) );
 
         return [ 'id' => $pref, 'key' => $key ];
     }

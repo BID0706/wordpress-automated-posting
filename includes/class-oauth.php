@@ -240,6 +240,14 @@ class ILLE_PG_OAuth {
     // =========================================================================
 
     public function handle_token( WP_REST_Request $request ): WP_REST_Response {
+        // Brute-force lockout on the token endpoint (invalid client/code/PKCE).
+        if ( ILLE_PG_Throttle::is_locked( ILLE_PG_Throttle::client_ip() ) ) {
+            return new WP_REST_Response(
+                [ 'error' => 'temporarily_unavailable', 'error_description' => 'Too many failed attempts. Try again later.' ],
+                429
+            );
+        }
+
         $grant_type = $request->get_param( 'grant_type' );
 
         if ( $grant_type === 'authorization_code' ) {
@@ -393,6 +401,9 @@ class ILLE_PG_OAuth {
 
         set_transient( 'ille_pg_token_'   . hash( 'sha256', $access_token ),  $payload, self::TRANSIENT_TOKEN_TTL );
         set_transient( 'ille_pg_refresh_' . hash( 'sha256', $refresh_token ), $payload, self::TRANSIENT_REFRESH_TTL );
+
+        // Successful issuance clears any brute-force failure count for this IP.
+        ILLE_PG_Throttle::clear( ILLE_PG_Throttle::client_ip() );
 
         return new WP_REST_Response( [
             'access_token'  => $access_token,
@@ -552,6 +563,9 @@ class ILLE_PG_OAuth {
     }
 
     private function token_error( string $error, string $description = '' ): WP_REST_Response {
+        // Count token-endpoint failures toward the per-IP brute-force lockout.
+        ILLE_PG_Throttle::record_failure( ILLE_PG_Throttle::client_ip() );
+
         $body = [ 'error' => $error ];
         if ( $description ) {
             $body['error_description'] = $description;

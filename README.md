@@ -448,6 +448,8 @@ The REST endpoint and MCP server share the same authentication system:
 
 The API key can be generated, regenerated, copied, or revoked from **Settings → Auth & Roles** via the ellipsis (⋯) menu next to each user's key. Users can manage their own key; administrators can manage any user's key. Revoking a key immediately invalidates it — a new one must be generated to restore access.
 
+**Security:** Per-user API keys and third-party provider keys are encrypted at rest. Repeated failed authentication attempts from the same client are rate-limited.
+
 </details>
 
 ---
@@ -498,6 +500,7 @@ ille-post-generator-v2/
 | **Phase 3A** | ✅ Complete | Focus keyword soft limit: changed from hard block to advisory warning |
 | **Phase 3B** | ✅ Complete | Native PHP MCP server (23 tools), supervised draft workflow, image upload with security hardening |
 | **Phase 3C** | ✅ Complete | Grok text model updated to Grok 4.5 and image model to Grok Imagine; settings save no longer double-escapes prompts; show/hide (eye) toggle on masked API-key fields; scheduled runs now log start/completed/failed/skipped entries to the Activity Log |
+| **Phase 3D** | ✅ Complete | Security hardening: per-user API keys and provider API keys are encrypted at rest; brute-force throttling on authentication failures |
 
 </details>
 
