@@ -57,7 +57,12 @@ class ILLE_PG_Crypto {
         $cipher = sodium_crypto_secretbox( $plaintext, $nonce, self::key() );
         $out    = self::PREFIX . base64_encode( $nonce . $cipher );
 
-        sodium_memzero( $plaintext );
+        // Best-effort wipe. Only the native libsodium extension can do this;
+        // the bundled sodium_compat polyfill throws on sodium_memzero(), so
+        // guard on the real extension being loaded.
+        if ( extension_loaded( 'sodium' ) ) {
+            sodium_memzero( $plaintext );
+        }
         return $out;
     }
 
