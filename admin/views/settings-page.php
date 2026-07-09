@@ -24,7 +24,12 @@ while ( count( $schedules ) < ILLE_PG_Settings::MAX_SCHEDULES ) {
 }
 ?>
 
-<div class="ille-pg-wrap">
+<div class="ille-pg-wrap" style="position:relative">
+    <div id="ille-pg-splash" class="ille-pg-splash" aria-hidden="true">
+        <span class="ille-pg-splash__dot"></span>
+        <span class="ille-pg-splash__dot"></span>
+        <span class="ille-pg-splash__dot"></span>
+    </div>
     <div class="ille-pg-header">
         <div class="ille-pg-header__logo">
             <span class="ille-pg-header__icon">✦</span>
@@ -372,9 +377,9 @@ while ( count( $schedules ) < ILLE_PG_Settings::MAX_SCHEDULES ) {
                             </div>
                         </div>
                         <div class="ille-pg-model-guide__tip">
-                            <span class="ille-pg-model-guide__icon">🆓</span>
+                            <span class="ille-pg-model-guide__icon">💳</span>
                             <div>
-                                <strong>Grok 3 Mini</strong> — Free credits included. Good alternative if Gemini quota is exhausted.
+                                <strong>Grok 4.5</strong> — Paid (requires xAI team credits). High-quality writing; good alternative to GPT-4o Mini.
                             </div>
                         </div>
                     </div>
@@ -404,12 +409,15 @@ while ( count( $schedules ) < ILLE_PG_Settings::MAX_SCHEDULES ) {
                                 <?php endif; ?>
                             </label>
                             <p class="ille-pg-hint"><?php echo wp_kses( $model['note'], [ 'a' => [ 'href' => [], 'target' => [] ] ] ); ?></p>
-                            <input type="password"
-                                class="ille-pg-input"
-                                name="settings[<?php echo esc_attr( $model['key_opt'] ); ?>]"
-                                value="<?php echo esc_attr( $key_val ); ?>"
-                                placeholder="API Key"
-                                autocomplete="off" />
+                            <div class="ille-pg-password-wrap">
+                                <input type="password"
+                                    class="ille-pg-input"
+                                    name="settings[<?php echo esc_attr( $model['key_opt'] ); ?>]"
+                                    value="<?php echo esc_attr( $key_val ); ?>"
+                                    placeholder="API Key"
+                                    autocomplete="off" />
+                                <button type="button" class="ille-pg-eye" aria-label="Show value" aria-pressed="false" title="Show value"></button>
+                            </div>
                         </div>
                     <?php endforeach; ?>
                 </div>
@@ -467,13 +475,16 @@ while ( count( $schedules ) < ILLE_PG_Settings::MAX_SCHEDULES ) {
                         Pollinations.ai API Key
                         <span class="ille-pg-badge ille-pg-badge--green" style="margin-left:6px">Optional</span>
                     </label>
-                    <input type="password"
-                        class="ille-pg-input"
-                        id="ille-pollinations-key"
-                        name="settings[<?php echo esc_attr( ILLE_PG_Settings::KEY_POLLINATIONS_KEY ); ?>]"
-                        value="<?php echo esc_attr( $pollinations_key ); ?>"
-                        placeholder="Leave blank to use free tier"
-                        autocomplete="off" />
+                    <div class="ille-pg-password-wrap">
+                        <input type="password"
+                            class="ille-pg-input"
+                            id="ille-pollinations-key"
+                            name="settings[<?php echo esc_attr( ILLE_PG_Settings::KEY_POLLINATIONS_KEY ); ?>]"
+                            value="<?php echo esc_attr( $pollinations_key ); ?>"
+                            placeholder="Leave blank to use free tier"
+                            autocomplete="off" />
+                        <button type="button" class="ille-pg-eye" aria-label="Show value" aria-pressed="false" title="Show value"></button>
+                    </div>
                     <p class="ille-pg-hint">
                         Free tier works without a key. An API key unlocks higher rate limits and priority generation.
                         <a href="https://pollinations.ai" target="_blank">Get key →</a>
@@ -681,6 +692,7 @@ while ( count( $schedules ) < ILLE_PG_Settings::MAX_SCHEDULES ) {
 
             $event_labels = [
                 ILLE_PG_Logger::EVENT_POST_CREATED     => [ 'Post Created',      'green'  ],
+                ILLE_PG_Logger::EVENT_SCHEDULE_RUN     => [ 'Scheduled Run',     'blue'   ],
                 ILLE_PG_Logger::EVENT_SETTINGS_CHANGED => [ 'Settings Changed',  'orange' ],
                 ILLE_PG_Logger::EVENT_API_KEY_ACTION   => [ 'API Key Action',    'blue'   ],
                 ILLE_PG_Logger::EVENT_LOG_EXPORTED     => [ 'Log Exported',      'muted'  ],
@@ -760,6 +772,30 @@ while ( count( $schedules ) < ILLE_PG_Settings::MAX_SCHEDULES ) {
                                             esc_html( $data['title'] ?? '' ),
                                             esc_html( ucfirst( $data['status'] ?? '' ) )
                                         );
+                                    } elseif ( $ev === ILLE_PG_Logger::EVENT_SCHEDULE_RUN ) {
+                                        $status  = $data['status'] ?? '';
+                                        $sched   = $data['schedule'] ?? '';
+                                        if ( $status === 'completed' ) {
+                                            $details = sprintf( '<strong>%s</strong> completed · <a href="%s" target="_blank">view post</a>',
+                                                esc_html( $sched ),
+                                                esc_url( $data['post_url'] ?? '#' )
+                                            );
+                                        } elseif ( $status === 'failed' ) {
+                                            $details = sprintf( '<strong>%s</strong> failed · %s',
+                                                esc_html( $sched ),
+                                                esc_html( $data['error'] ?? ( $data['code'] ?? 'unknown error' ) )
+                                            );
+                                        } elseif ( $status === 'skipped' ) {
+                                            $details = sprintf( '<strong>%s</strong> skipped · %s',
+                                                esc_html( $sched ),
+                                                esc_html( $data['reason'] ?? '' )
+                                            );
+                                        } else {
+                                            $details = sprintf( '<strong>%s</strong> started%s',
+                                                esc_html( $sched ),
+                                                ! empty( $data['topic'] ) ? ' · topic: ' . esc_html( $data['topic'] ) : ''
+                                            );
+                                        }
                                     } elseif ( $ev === ILLE_PG_Logger::EVENT_SETTINGS_CHANGED ) {
                                         $details = sprintf( '<code>%s</code> <span class="ille-pg-log-prev">%s</span> → <span class="ille-pg-log-new">%s</span>',
                                             esc_html( $data['key']  ?? '' ),

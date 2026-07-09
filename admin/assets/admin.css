@@ -1241,3 +1241,77 @@
 .ille-pg-table tr:last-child td { border-bottom: none; }
 .ille-pg-table th:last-child,
 .ille-pg-table td:last-child { width: 80px; text-align: right; white-space: nowrap; word-break: normal; }
+
+/* Settings page splash screen */
+.ille-pg-splash {
+    position: fixed;
+    inset: 0;
+    background: #f0f0f1;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: opacity .15s ease;
+}
+.ille-pg-splash.ille-pg-splash--hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+.ille-pg-splash__dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--ille-accent, #2271b1);
+    animation: ille-pg-splash-pulse 1s ease-in-out infinite;
+}
+.ille-pg-splash__dot:nth-child(2) { animation-delay: .15s; }
+.ille-pg-splash__dot:nth-child(3) { animation-delay: .3s; }
+@keyframes ille-pg-splash-pulse {
+    0%, 100% { opacity: .25; transform: scale(.85); }
+    50%       { opacity: 1;   transform: scale(1);   }
+}
+
+/* --- Password/value reveal toggle (eye icon) --- */
+.ille-pg-password-wrap {
+    position: relative;
+    display: block;
+}
+.ille-pg-password-wrap .ille-pg-input {
+    /* leave room for the eye button so long values don't sit under it */
+    padding-right: 40px;
+}
+.ille-pg-eye {
+    position: absolute;
+    top: 0;
+    right: 0;
+    height: 100%;
+    width: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    margin: 0;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    color: var(--ille-text-muted);
+    transition: color .15s;
+}
+.ille-pg-eye:hover,
+.ille-pg-eye:focus-visible { color: var(--ille-accent); }
+.ille-pg-eye:focus-visible { outline: 2px solid var(--ille-accent); outline-offset: -2px; border-radius: var(--ille-radius-sm); }
+/* eye (hidden state) */
+.ille-pg-eye::before {
+    content: "";
+    width: 18px;
+    height: 18px;
+    background-color: currentColor;
+    -webkit-mask: center / contain no-repeat url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z'/%3E%3Ccircle cx='12' cy='12' r='3'/%3E%3C/svg%3E");
+    mask: center / contain no-repeat url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z'/%3E%3Ccircle cx='12' cy='12' r='3'/%3E%3C/svg%3E");
+}
+/* eye-off (visible state) */
+.ille-pg-eye[aria-pressed="true"]::before {
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9.9 4.24A9.12 9.12 0 0 1 12 4c6.5 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68'/%3E%3Cpath d='M6.61 6.61A13.526 13.526 0 0 0 2 12s3.5 7 10 7a9.74 9.74 0 0 0 5.39-1.61'/%3E%3Cline x1='2' y1='2' x2='22' y2='22'/%3E%3C/svg%3E");
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9.9 4.24A9.12 9.12 0 0 1 12 4c6.5 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68'/%3E%3Cpath d='M6.61 6.61A13.526 13.526 0 0 0 2 12s3.5 7 10 7a9.74 9.74 0 0 0 5.39-1.61'/%3E%3Cline x1='2' y1='2' x2='22' y2='22'/%3E%3C/svg%3E");
+}

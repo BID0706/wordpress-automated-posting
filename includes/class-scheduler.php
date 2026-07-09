@@ -19,20 +19,50 @@ class ILLE_PG_Scheduler {
         $schedule = $schedules[ $index ];
         if ( empty( $schedule['enabled'] ) ) return;
 
+        $label = ! empty( $schedule['label'] ) ? $schedule['label'] : ( 'Schedule ' . ( $index + 1 ) );
+
         // Check if today is one of the configured days
         $today = strtolower( date( 'D' ) ); // mon, tue, wed...
         $days  = array_map( 'strtolower', (array) ( $schedule['days'] ?? [] ) );
         if ( ! empty( $days ) && ! in_array( $today, $days, true ) ) {
+            ILLE_PG_Logger::log( ILLE_PG_Logger::EVENT_SCHEDULE_RUN, [
+                'status'   => 'skipped',
+                'schedule' => $label,
+                'reason'   => "Fired on {$today}, which is not a configured day (" . implode( ', ', $days ) . ')',
+            ], ILLE_PG_Logger::TRIGGER_SCHEDULE );
             self::reschedule( $index, $schedule );
             return;
         }
 
-        ILLE_PG_Post_Creator::create( [
+        ILLE_PG_Logger::log( ILLE_PG_Logger::EVENT_SCHEDULE_RUN, [
+            'status'      => 'started',
+            'schedule'    => $label,
+            'topic'       => $schedule['topic']       ?? '',
+            'post_status' => $schedule['post_status'] ?? 'publish',
+        ], ILLE_PG_Logger::TRIGGER_SCHEDULE );
+
+        $result = ILLE_PG_Post_Creator::create( [
             'topic'          => $schedule['topic']       ?? '',
             'post_status'    => $schedule['post_status'] ?? 'publish',
             'featured_image' => true,
             'trigger'        => ILLE_PG_Logger::TRIGGER_SCHEDULE,
         ] );
+
+        if ( is_wp_error( $result ) ) {
+            ILLE_PG_Logger::log( ILLE_PG_Logger::EVENT_SCHEDULE_RUN, [
+                'status'   => 'failed',
+                'schedule' => $label,
+                'code'     => $result->get_error_code(),
+                'error'    => $result->get_error_message(),
+            ], ILLE_PG_Logger::TRIGGER_SCHEDULE );
+        } else {
+            ILLE_PG_Logger::log( ILLE_PG_Logger::EVENT_SCHEDULE_RUN, [
+                'status'   => 'completed',
+                'schedule' => $label,
+                'post_id'  => $result,
+                'post_url' => get_permalink( $result ),
+            ], ILLE_PG_Logger::TRIGGER_SCHEDULE );
+        }
 
         self::reschedule( $index, $schedule );
     }

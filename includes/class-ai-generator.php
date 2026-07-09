@@ -139,7 +139,7 @@ Respond with ONLY a valid JSON object — no markdown, no code fences, no extra 
         return match ( $model_id ) {
             'gemini-2.0-flash' => self::call_gemini( $api_key, $prompt ),
             'gpt-4o-mini'      => self::call_openai_compat( $api_key, 'gpt-4o-mini', 'https://api.openai.com/v1', $prompt ),
-            'grok-3-mini'      => self::call_openai_compat( $api_key, 'grok-3-mini', 'https://api.x.ai/v1', $prompt ),
+            'grok-4.5'         => self::call_openai_compat( $api_key, 'grok-4.5', 'https://api.x.ai/v1', $prompt ),
             default            => new WP_Error( 'unknown_model', "Unknown model ID: {$model_id}" ),
         };
     }
@@ -310,7 +310,7 @@ Respond with ONLY a valid JSON object — no markdown, no code fences, no extra 
 
         $attachment_id = match ( $model['id'] ) {
             'dall-e-3'      => self::generate_image_dalle( $model['key'], $prompt, $alt_text ),
-            'grok-aurora'   => self::generate_image_grok( $model['key'], $prompt, $alt_text ),
+            'grok-imagine'  => self::generate_image_grok( $model['key'], $prompt, $alt_text ),
             'gemini-imagen' => self::generate_image_gemini( $model['key'], $prompt, $alt_text ),
             default         => self::generate_image_pollinations( $model['key'], $prompt, $alt_text ),
         };
@@ -380,7 +380,7 @@ Respond with ONLY a valid JSON object — no markdown, no code fences, no extra 
                 'Content-Type'  => 'application/json',
             ],
             'body' => wp_json_encode( [
-                'model'  => 'grok-2-image-1212',
+                'model'  => 'grok-imagine-image-quality',
                 'prompt' => $prompt,
                 'n'      => 1,
             ] ),

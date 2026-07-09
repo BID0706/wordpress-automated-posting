@@ -3,6 +3,7 @@
 A WordPress plugin that automates SEO-optimized blog post creation via an admin UI, REST endpoint, or AI assistant — with support for supervised (draft) and unsupervised (publish) workflows.
 
 Built for [ille.com.ng](https://ille.com.ng).
+Developer: Ibiso Barimalaa
 
 ---
 
@@ -398,7 +399,7 @@ AI assistants that do not support API key auth (ChatGPT GPT Actions, Groq UI) ca
 **Notes:**
 - PKCE (`S256`) is supported and used automatically by clients that support it.
 - X-API-Key continues to work for Cursor and Claude Desktop regardless of OAuth mode.
-- The `/oauth/register` Dynamic Client Registration endpoint is disabled by default.
+- The `/oauth/register` Dynamic Client Registration endpoint is disabled by default. To enable it: `update_option( 'ille_pg_oauth_open_registration', true );`
 
 </details>
 
@@ -413,7 +414,7 @@ AI assistants that do not support API key auth (ChatGPT GPT Actions, Groq UI) ca
 |-------|----------|------|-------|
 | Gemini 2.0 Flash | Google | Free | 1,500 req/day — [Get key](https://aistudio.google.com/app/apikey) |
 | GPT-4o Mini | OpenAI | Paid | [Get key](https://platform.openai.com/api-keys) |
-| Grok 3 Mini | xAI | Free credits | [Get key](https://console.x.ai/) |
+| Grok 4.5 | xAI | Paid (requires credits) | [Get key](https://console.x.ai/) |
 
 **Model resolution**: The model selected in Settings → AI Models is used if its API key is configured. If not, the plugin falls back to the first model that has a key. An error is returned if no model has a key.
 
@@ -426,7 +427,7 @@ AI assistants that do not support API key auth (ChatGPT GPT Actions, Groq UI) ca
 |-------|----------|-------------|-------|
 | Pollinations.ai | Pollinations | Optional | Free tier, no key needed. API key unlocks higher limits. |
 | DALL·E 3 | OpenAI | OpenAI key | High-quality, 1792×1024. Uses existing OpenAI API key. |
-| Grok Aurora | xAI | xAI key | Uses `grok-2-image-1212`. Uses existing xAI API key. |
+| Grok Imagine | xAI | xAI key | Uses `grok-imagine-image-quality`. Uses existing xAI API key. |
 | Gemini Imagen | Google | Gemini key | Uses `imagen-3.0-generate-001`. Uses existing Gemini API key. |
 
 **Async image generation**: The post is published immediately with the configured default placeholder image. The AI image is generated in the background via WP-Cron and automatically replaces the placeholder once ready. If image generation fails entirely, the placeholder remains. If no placeholder is configured, the most recent media library image is used.
@@ -490,12 +491,13 @@ ille-post-generator-v2/
 |-------|--------|-------------|
 | **Phase 1** | ✅ Complete | Plugin structure, admin UI, REST endpoint, scheduler — dummy content |
 | **Phase 2** | ✅ Complete | AI content generation (Gemini / GPT-4o Mini / Grok), image generation (Pollinations.ai), full Yoast SEO optimisation |
-| **Phase 2.1** | ✅ Complete | Async image generation, multi-model image support (Pollinations / DALL·E 3 / Grok Aurora / Gemini Imagen), Pollinations API key, image model selector |
+| **Phase 2.1** | ✅ Complete | Async image generation, multi-model image support (Pollinations / DALL·E 3 / Grok Imagine / Gemini Imagen), Pollinations API key, image model selector |
 | **Phase 2.2** | ✅ Complete | Content uniqueness: covered topics/keyword injection, duplicate keyword detection with fresh-angle context, 2-word keyword limit |
 | **Phase 2.3** | ✅ Complete | API key management: users can revoke their own key, admins can revoke any user's key; Copy/Regenerate/Revoke actions moved to ellipsis menu with copy icon shortcut |
 | **Phase 2.4** | ✅ Complete | API key list: current user pinned at top (server-rendered), other users loaded via paginated AJAX (20/page) with live search; eliminates N+1 queries on large user sets |
 | **Phase 3A** | ✅ Complete | Focus keyword soft limit: changed from hard block to advisory warning |
 | **Phase 3B** | ✅ Complete | Native PHP MCP server (23 tools), supervised draft workflow, image upload with security hardening |
+| **Phase 3C** | ✅ Complete | Grok text model updated to Grok 4.5 and image model to Grok Imagine; settings save no longer double-escapes prompts; show/hide (eye) toggle on masked API-key fields; scheduled runs now log start/completed/failed/skipped entries to the Activity Log |
 
 </details>
 
