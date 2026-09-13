@@ -139,7 +139,7 @@ Respond with ONLY a valid JSON object — no markdown, no code fences, no extra 
         return match ( $model_id ) {
             'gemini-2.0-flash' => self::call_gemini( $api_key, $prompt ),
             'gpt-4o-mini'      => self::call_openai_compat( $api_key, 'gpt-4o-mini', 'https://api.openai.com/v1', $prompt ),
-            'grok-4.5'         => self::call_openai_compat( $api_key, 'grok-4.5', 'https://api.x.ai/v1', $prompt ),
+            'grok-4.6', 'grok-4.5' => self::call_openai_compat( $api_key, 'grok-4.6', 'https://api.x.ai/v1', $prompt ),
             default            => new WP_Error( 'unknown_model', "Unknown model ID: {$model_id}" ),
         };
     }

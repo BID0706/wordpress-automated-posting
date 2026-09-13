@@ -322,7 +322,7 @@ class ILLE_PG_MCP {
                     'type'       => 'object',
                     'required'   => [ 'model_id' ],
                     'properties' => [
-                        'model_id' => [ 'type' => 'string', 'description' => 'Model ID from get_models (e.g. "gemini-2.0-flash", "gpt-4o-mini", "grok-4.5")' ],
+                        'model_id' => [ 'type' => 'string', 'description' => 'Model ID from get_models (e.g. "gemini-2.0-flash", "gpt-4o-mini", "grok-4.6")' ],
                     ],
                 ],
             ],
@@ -905,7 +905,9 @@ class ILLE_PG_MCP {
     private function tool_get_models(): array {
         $text_models  = ILLE_PG_Settings::get_available_models();
         $image_models = ILLE_PG_Settings::get_available_image_models();
-        $active_text  = (string) ILLE_PG_Settings::get( ILLE_PG_Settings::KEY_ACTIVE_MODEL, 'gemini-2.0-flash' );
+        $active_text  = ILLE_PG_Settings::normalize_text_model_id(
+            (string) ILLE_PG_Settings::get( ILLE_PG_Settings::KEY_ACTIVE_MODEL, 'gemini-2.0-flash' )
+        );
         $active_image = ILLE_PG_Settings::get_image_model();
 
         $text_list = [];
@@ -941,7 +943,7 @@ class ILLE_PG_MCP {
             return $this->err( 'Administrator access required.' );
         }
 
-        $model_id = sanitize_text_field( $args['model_id'] ?? '' );
+        $model_id = ILLE_PG_Settings::normalize_text_model_id( sanitize_text_field( $args['model_id'] ?? '' ) );
         $valid    = array_keys( ILLE_PG_Settings::get_available_models() );
 
         if ( ! in_array( $model_id, $valid, true ) ) {

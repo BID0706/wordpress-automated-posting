@@ -3,7 +3,7 @@
  * Plugin Name: ILLE Post Generator V2
  * Plugin URI:  https://ille.com.ng
  * Description: Generates SEO-optimized posts via admin UI or REST endpoint with supervised/unsupervised workflows.
- * Version:     1.6.0
+ * Version:     1.6.1
  * Author:      ILLE
  * License:     GPL-2.0+
  * Text Domain: ille-pg
@@ -11,7 +11,7 @@
 
 if ( ! defined( 'ABSPATH' ) ) exit;
 
-define( 'ILLE_PG_VERSION',  '1.6.0' );
+define( 'ILLE_PG_VERSION',  '1.6.1' );
 define( 'ILLE_PG_DIR',      plugin_dir_path( __FILE__ ) );
 define( 'ILLE_PG_URL',      plugin_dir_url( __FILE__ ) );
 define( 'ILLE_PG_BASENAME', plugin_basename( __FILE__ ) );
@@ -40,6 +40,14 @@ function ille_pg_init() {
     }
 }
 add_action( 'plugins_loaded', 'ille_pg_init' );
+
+// Remap stored Grok 4.5 preference to Grok 4.6 (retired model times out).
+add_action( 'plugins_loaded', 'ille_pg_maybe_migrate_grok_model', 5 );
+function ille_pg_maybe_migrate_grok_model() {
+    if ( get_option( ILLE_PG_Settings::KEY_ACTIVE_MODEL ) === 'grok-4.5' ) {
+        update_option( ILLE_PG_Settings::KEY_ACTIVE_MODEL, 'grok-4.6' );
+    }
+}
 
 // One-time migration: encrypt secrets (API keys + provider keys) stored as
 // plaintext before at-rest encryption was introduced. Runs once in admin.

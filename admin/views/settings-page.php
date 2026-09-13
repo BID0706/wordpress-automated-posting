@@ -6,7 +6,9 @@ $mcp_url      = rest_url( ILLE_PG_Settings::get_rest_namespace() . '/mcp' );
 $schedules    = ILLE_PG_Settings::get_schedules();
 $next_runs    = ILLE_PG_Scheduler::get_next_runs();
 $models       = ILLE_PG_Settings::get_available_models();
-$active_model = ILLE_PG_Settings::get( ILLE_PG_Settings::KEY_ACTIVE_MODEL, 'gemini-2.0-flash' );
+$active_model = ILLE_PG_Settings::normalize_text_model_id(
+    (string) ILLE_PG_Settings::get( ILLE_PG_Settings::KEY_ACTIVE_MODEL, 'gemini-2.0-flash' )
+);
 $all_roles    = wp_roles()->get_names();
 $saved_roles  = ILLE_PG_Settings::get_allowed_roles();
 $saved_params = ILLE_PG_Settings::get_allowed_params();
@@ -379,7 +381,7 @@ while ( count( $schedules ) < ILLE_PG_Settings::MAX_SCHEDULES ) {
                         <div class="ille-pg-model-guide__tip">
                             <span class="ille-pg-model-guide__icon">💳</span>
                             <div>
-                                <strong>Grok 4.5</strong> — Paid (requires xAI team credits). High-quality writing; good alternative to GPT-4o Mini.
+                                <strong>Grok 4.6</strong> — Paid (requires xAI team credits). High-quality writing; good alternative to GPT-4o Mini.
                             </div>
                         </div>
                     </div>

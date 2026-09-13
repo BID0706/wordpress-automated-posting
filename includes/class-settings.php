@@ -210,11 +210,18 @@ class ILLE_PG_Settings {
     }
 
     /**
+     * Map retired text model IDs to the current registry entry.
+     */
+    public static function normalize_text_model_id( string $model_id ): string {
+        return $model_id === 'grok-4.5' ? 'grok-4.6' : $model_id;
+    }
+
+    /**
      * Returns the model that will actually be used at runtime.
      * Respects user preference but falls back to any configured model.
      */
     public static function resolve_active_model(): array|WP_Error {
-        $preferred = (string) self::get( self::KEY_ACTIVE_MODEL, 'gemini-2.0-flash' );
+        $preferred = self::normalize_text_model_id( (string) self::get( self::KEY_ACTIVE_MODEL, 'gemini-2.0-flash' ) );
         $models    = self::get_available_models();
 
         // Build resolution order: preferred first, then the rest
@@ -290,6 +297,7 @@ class ILLE_PG_Settings {
             $text = self::resolve_active_model();
             $map  = [
                 'gpt-4o-mini'      => 'dall-e-3',
+                'grok-4.6'         => 'grok-imagine',
                 'grok-4.5'         => 'grok-imagine',
                 'gemini-2.0-flash' => 'gemini-imagen',
             ];
@@ -324,8 +332,8 @@ class ILLE_PG_Settings {
                 'free'     => false,
                 'note'     => 'Paid — <a href="https://platform.openai.com/api-keys" target="_blank">Get key</a>',
             ],
-            'grok-4.5' => [
-                'label'    => 'xAI Grok 4.5',
+            'grok-4.6' => [
+                'label'    => 'xAI Grok 4.6',
                 'key_opt'  => self::KEY_XAI_KEY,
                 'free'     => false,
                 'note'     => 'Paid (requires credits) — <a href="https://console.x.ai/" target="_blank">Get key</a>',
