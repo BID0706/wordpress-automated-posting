@@ -663,14 +663,14 @@
         const modelKeys = {
             'gemini-2.0-flash': v( 'ille_pg_gemini_api_key' ),
             'gpt-4o-mini':      v( 'ille_pg_openai_api_key' ),
-            'grok-4.5':         v( 'ille_pg_xai_api_key' ),
+            'grok-4.6':         v( 'ille_pg_xai_api_key' ),
         };
         const modelNames = {
             'gemini-2.0-flash': 'Gemini 2.0 Flash',
             'gpt-4o-mini':      'GPT-4o Mini',
-            'grok-4.5':         'Grok 4.5',
+            'grok-4.6':         'Grok 4.6',
         };
-        const fallbackOrder = [ 'gemini-2.0-flash', 'gpt-4o-mini', 'grok-4.5' ];
+        const fallbackOrder = [ 'gemini-2.0-flash', 'gpt-4o-mini', 'grok-4.6' ];
 
         // Try preferred first, then fallback order
         let resolved = null;
